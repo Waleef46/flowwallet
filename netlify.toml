@@ -1,0 +1,9 @@
+# FlowWallet — static site, no build step. Publish the repo root as-is.
+[build]
+  publish = "."
+
+# Never cache the service worker, so app updates roll out immediately.
+[[headers]]
+  for = "/sw.js"
+  [headers.values]
+    Cache-Control = "no-cache"

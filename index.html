@@ -1,0 +1,1657 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="theme-color" content="#3b82f6"/>
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-title" content="FlowWallet"/>
+  <link rel="apple-touch-icon" href="icon.svg"/>
+  <title>FlowWallet — Pay. Send. Flow.</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 72 72'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='8' y1='8' x2='66' y2='60' gradientUnits='userSpaceOnUse'%3E%3Cstop stop-color='%2338bdf8'/%3E%3Cstop offset='1' stop-color='%231d4ed8'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect x='2' y='30' width='20' height='6' rx='3' fill='url(%23g)'/%3E%3Crect x='8' y='42' width='16' height='6' rx='3' fill='url(%23g)' opacity='0.6'/%3E%3Crect x='22' y='19' width='46' height='35' rx='9' fill='url(%23g)'/%3E%3Cpath d='M52 30 H64 a4 4 0 0 1 4 4 v5 a4 4 0 0 1 -4 4 H52 z' fill='%231e3a8a'/%3E%3Ccircle cx='56' cy='36.5' r='3.2' fill='%23fff'/%3E%3C/svg%3E">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <link rel="manifest" href="manifest.json">
+  <style>
+    body { font-family: 'Inter', system-ui, sans-serif; }
+    .nav-item { color: #9ca3af; transition: all .15s; }
+    .nav-item:hover { color: #fff; background: #1f2937; }
+    .nav-active { color: #fff; background: #1e3a8a; }
+    .nav-active svg { color: #3b82f6; }
+    input[type=number]::-webkit-inner-spin-button,
+    input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+    input[type=number] { -moz-appearance: textfield; }
+    .sheet-enter { animation: slideUp .25s ease; }
+    @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+    .card { background: #111827; border: 1px solid #1f2937; }
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-thumb { background: #374151; border-radius: 4px; }
+    @media print {
+      aside, header, #add-modal, #transfer-modal, #goal-modal, #funds-modal, #toast, .no-print { display: none !important; }
+      main { margin: 0 !important; }
+      .page:not(#page-6) { display: none !important; }
+      body { background: #fff !important; color: #000 !important; }
+      .card { background: #fff !important; border: 1px solid #ccc !important; box-shadow: none !important; }
+      .text-gray-400, .text-gray-500, .text-slate-100 { color: #333 !important; }
+    }
+  </style>
+</head>
+<body class="bg-gray-950 text-gray-100">
+
+  <!-- ============ AUTH / LOGIN SCREEN ============ -->
+  <div id="auth-screen" class="fixed inset-0 z-[60] bg-gray-950 flex items-center justify-center p-4">
+    <div class="w-full max-w-sm">
+      <div class="flex items-center justify-center gap-2.5 mb-8">
+        <svg width="38" height="38" viewBox="0 0 72 72" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <defs><linearGradient id="fwAuth" x1="8" y1="8" x2="66" y2="60" gradientUnits="userSpaceOnUse"><stop stop-color="#38bdf8"/><stop offset="1" stop-color="#1d4ed8"/></linearGradient></defs>
+          <rect x="2" y="30" width="20" height="6" rx="3" fill="url(#fwAuth)"/>
+          <rect x="8" y="42" width="16" height="6" rx="3" fill="url(#fwAuth)" opacity="0.6"/>
+          <rect x="22" y="19" width="46" height="35" rx="9" fill="url(#fwAuth)"/>
+          <path d="M52 30 H64 a4 4 0 0 1 4 4 v5 a4 4 0 0 1 -4 4 H52 z" fill="#1e3a8a"/>
+          <circle cx="56" cy="36.5" r="3.2" fill="#fff"/>
+        </svg>
+        <div class="leading-none">
+          <div class="text-2xl font-bold"><span class="text-sky-400">Flow</span><span class="text-slate-100">Wallet</span></div>
+          <div class="text-[9px] tracking-[0.22em] text-gray-500 mt-1">PAY · SEND · FLOW</div>
+        </div>
+      </div>
+
+      <div class="card rounded-3xl p-6">
+        <h2 id="auth-title" class="text-2xl font-bold mb-1">Welcome back</h2>
+        <p id="auth-sub" class="text-gray-400 text-sm mb-6">Log in to your wallet</p>
+
+        <div id="auth-name-wrap" class="hidden">
+          <input id="auth-name" type="text" placeholder="Full name" class="w-full bg-gray-800 p-3.5 rounded-xl mb-3 outline-none focus:ring-2 ring-blue-500"/>
+        </div>
+        <input id="auth-email" type="email" placeholder="Email" autocomplete="username" class="w-full bg-gray-800 p-3.5 rounded-xl mb-3 outline-none focus:ring-2 ring-blue-500"/>
+        <input id="auth-password" type="password" placeholder="Password" autocomplete="current-password" class="w-full bg-gray-800 p-3.5 rounded-xl mb-3 outline-none focus:ring-2 ring-blue-500"/>
+        <div id="auth-confirm-wrap" class="hidden">
+          <input id="auth-confirm" type="password" placeholder="Confirm password" class="w-full bg-gray-800 p-3.5 rounded-xl mb-3 outline-none focus:ring-2 ring-blue-500"/>
+        </div>
+
+        <p id="auth-error" class="hidden text-sm text-red-400 mb-3"></p>
+
+        <button id="auth-submit" onclick="authSubmit()" class="w-full bg-blue-500 hover:bg-blue-400 py-3.5 rounded-xl text-lg font-semibold">Log in</button>
+
+        <p class="text-center text-sm text-gray-400 mt-5">
+          <span id="auth-toggle-text">New to FlowWallet?</span>
+          <button onclick="toggleAuthMode()" id="auth-toggle-btn" class="text-blue-400 font-medium ml-1">Create an account</button>
+        </p>
+      </div>
+      <p class="text-center text-xs text-gray-600 mt-4">Local demo login — your account &amp; data stay in this browser.</p>
+    </div>
+  </div>
+
+  <div class="flex min-h-screen">
+
+    <!-- ============ SIDEBAR ============ -->
+    <aside class="w-16 lg:w-60 bg-gray-900 border-r border-gray-800 fixed h-full flex flex-col z-30">
+      <div class="flex items-center gap-2.5 px-4 lg:px-6 h-20 shrink-0">
+        <svg width="34" height="34" viewBox="0 0 72 72" fill="none" xmlns="http://www.w3.org/2000/svg" class="shrink-0">
+          <defs>
+            <linearGradient id="fwGrad" x1="8" y1="8" x2="66" y2="60" gradientUnits="userSpaceOnUse">
+              <stop stop-color="#38bdf8"/>
+              <stop offset="1" stop-color="#1d4ed8"/>
+            </linearGradient>
+          </defs>
+          <!-- flow / motion lines -->
+          <rect x="2"  y="30" width="20" height="6" rx="3" fill="url(#fwGrad)"/>
+          <rect x="8"  y="42" width="16" height="6" rx="3" fill="url(#fwGrad)" opacity="0.6"/>
+          <!-- wallet body -->
+          <rect x="22" y="19" width="46" height="35" rx="9" fill="url(#fwGrad)"/>
+          <!-- clasp pocket + snap -->
+          <path d="M52 30 H64 a4 4 0 0 1 4 4 v5 a4 4 0 0 1 -4 4 H52 z" fill="#1e3a8a"/>
+          <circle cx="56" cy="36.5" r="3.2" fill="#fff"/>
+        </svg>
+        <div class="hidden lg:block leading-none">
+          <div class="text-xl font-bold"><span class="text-sky-400">Flow</span><span class="text-slate-100">Wallet</span></div>
+          <div class="text-[9px] tracking-[0.22em] text-gray-500 mt-1">PAY · SEND · FLOW</div>
+        </div>
+      </div>
+
+      <nav class="flex-1 px-2 lg:px-3 space-y-1 mt-2">
+        <button data-page="0" onclick="showPage(0)" class="nav-item nav-active w-full flex items-center gap-3 px-3 py-2.5 rounded-xl">
+          <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+          <span class="hidden lg:inline">Dashboard</span>
+        </button>
+        <button data-page="1" onclick="showPage(1)" class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-xl">
+          <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg>
+          <span class="hidden lg:inline">Transactions</span>
+        </button>
+        <button data-page="2" onclick="showPage(2)" class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-xl">
+          <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2"/></svg>
+          <span class="hidden lg:inline">Budgets</span>
+        </button>
+        <button data-page="3" onclick="showPage(3)" class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-xl">
+          <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+          <span class="hidden lg:inline">Analytics</span>
+        </button>
+        <button data-page="4" onclick="showPage(4)" class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-xl">
+          <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"/></svg>
+          <span class="hidden lg:inline">Goals</span>
+        </button>
+        <button data-page="6" onclick="showPage(6)" class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-xl">
+          <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+          <span class="hidden lg:inline">Reports</span>
+        </button>
+      </nav>
+
+      <div class="px-2 lg:px-3 pb-4">
+        <button data-page="5" onclick="showPage(5)" class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-xl">
+          <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+          <span class="hidden lg:inline">Settings</span>
+        </button>
+      </div>
+    </aside>
+
+    <!-- ============ MAIN ============ -->
+    <main class="ml-16 lg:ml-60 flex-1 min-w-0">
+
+      <!-- HEADER -->
+      <header class="flex items-center justify-between gap-4 px-5 md:px-8 py-5">
+        <div>
+          <h1 id="greeting" class="text-2xl md:text-3xl font-bold">Welcome back</h1>
+          <p id="header-month" class="text-gray-400"></p>
+        </div>
+        <div class="flex items-center gap-3">
+          <button onclick="showAddModal()" class="hidden sm:flex items-center gap-2 bg-blue-500 hover:bg-blue-400 text-white font-semibold px-4 py-2.5 rounded-xl">
+            <span class="text-lg leading-none">+</span> New
+          </button>
+
+          <!-- Notifications -->
+          <div class="relative">
+            <button onclick="toggleDropdown(event,'notif-panel')" class="relative w-11 h-11 rounded-full bg-gray-900 border border-gray-800 flex items-center justify-center hover:bg-gray-800">
+              <svg class="w-5 h-5 text-gray-300" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
+              <span id="notif-badge" class="hidden absolute -top-1 -right-1 bg-red-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center">0</span>
+            </button>
+            <div id="notif-panel" class="dropdown hidden absolute right-0 mt-2 w-72 bg-gray-900 border border-gray-800 rounded-2xl shadow-xl p-2 z-50">
+              <p class="px-3 py-2 text-sm font-semibold border-b border-gray-800">Notifications</p>
+              <div id="notif-list" class="max-h-80 overflow-y-auto py-1"></div>
+            </div>
+          </div>
+
+          <!-- Avatar -->
+          <div class="relative">
+            <button onclick="toggleDropdown(event,'avatar-panel')" class="flex items-center gap-2">
+              <div id="avatar-initial" class="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center font-semibold text-white">?</div>
+              <svg class="hidden md:block w-4 h-4 text-gray-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+            </button>
+            <div id="avatar-panel" class="dropdown hidden absolute right-0 mt-2 w-52 bg-gray-900 border border-gray-800 rounded-2xl shadow-xl p-2 z-50">
+              <button onclick="showPage(7);closeDropdowns()" class="w-full text-left px-3 py-2 border-b border-gray-800 hover:bg-gray-800 rounded-t-lg">
+                <p id="user-name" class="text-sm font-semibold">User</p>
+                <p id="user-email" class="text-xs text-gray-500 truncate"></p>
+              </button>
+              <button onclick="showPage(7);closeDropdowns()" class="w-full text-left px-3 py-2 rounded-lg hover:bg-gray-800 text-sm mt-1">👤 Profile</button>
+              <button onclick="showPage(5);closeDropdowns()" class="w-full text-left px-3 py-2 rounded-lg hover:bg-gray-800 text-sm">⚙️ Settings</button>
+              <button onclick="showPage(4);closeDropdowns()" class="w-full text-left px-3 py-2 rounded-lg hover:bg-gray-800 text-sm">🎯 Goals</button>
+              <button onclick="exportData();closeDropdowns()" class="w-full text-left px-3 py-2 rounded-lg hover:bg-gray-800 text-sm">⬇️ Export data</button>
+              <button onclick="logout()" class="w-full text-left px-3 py-2 rounded-lg hover:bg-gray-800 text-sm text-red-400 border-t border-gray-800 mt-1">↩ Log out</button>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <div class="px-5 md:px-8 pb-12">
+
+        <!-- ============ DASHBOARD ============ -->
+        <section id="page-0" class="page">
+          <!-- Accounts strip -->
+          <div id="accounts-strip" class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6"></div>
+
+          <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
+
+            <!-- Left 2/3 -->
+            <div class="xl:col-span-2 space-y-6">
+              <!-- Balance gradient card -->
+              <div class="relative overflow-hidden rounded-3xl p-6 bg-gradient-to-br from-blue-500 to-blue-700 shadow-lg shadow-blue-900/40">
+                <div class="relative z-10">
+                  <p class="text-blue-50/90">Total Balance</p>
+                  <p id="header-balance" class="text-4xl md:text-5xl font-bold mt-1">0</p>
+                  <p id="header-change" class="text-blue-50/90 text-sm mt-2">0 this month</p>
+                </div>
+                <div class="absolute right-6 top-6 w-16 h-16 rounded-2xl bg-white/15 flex items-center justify-center text-3xl z-10">💳</div>
+                <div class="absolute -right-8 -bottom-10 w-48 h-48 rounded-full bg-white/10"></div>
+              </div>
+
+              <!-- Income / Expenses -->
+              <div class="grid grid-cols-2 gap-6">
+                <div class="card rounded-2xl p-5">
+                  <div class="flex items-center gap-2 text-gray-400 text-sm"><span class="text-green-400">▲</span> Income</div>
+                  <p id="card-income" class="text-2xl md:text-3xl font-bold mt-1">0</p>
+                </div>
+                <div class="card rounded-2xl p-5">
+                  <div class="flex items-center gap-2 text-gray-400 text-sm"><span class="text-orange-400">▼</span> Expenses</div>
+                  <p id="card-expenses" class="text-2xl md:text-3xl font-bold mt-1">0</p>
+                </div>
+              </div>
+
+              <!-- Cash Flow -->
+              <div class="card rounded-2xl p-5">
+                <div class="flex items-center justify-between mb-3">
+                  <h3 class="font-semibold text-lg">Cash Flow</h3>
+                  <span class="text-xs text-gray-500">Cumulative balance · last 30 days</span>
+                </div>
+                <div class="relative h-64"><canvas id="cashflowChart"></canvas></div>
+              </div>
+            </div>
+
+            <!-- Right 1/3: Quick Budget Overview -->
+            <div class="card rounded-2xl p-5">
+              <div class="flex items-center justify-between mb-2">
+                <h3 class="font-semibold text-lg">Quick Budget Overview</h3>
+                <button onclick="showPage(2)" class="text-xs text-blue-400">View all</button>
+              </div>
+              <div id="budget-rings" class="space-y-3 mt-2"></div>
+            </div>
+          </div>
+
+          <!-- Recent Transactions table -->
+          <div class="card rounded-2xl mt-6 overflow-hidden">
+            <div class="flex items-center justify-between p-5">
+              <h3 class="font-semibold text-lg">Recent Transactions</h3>
+              <button onclick="showPage(1)" class="text-sm text-blue-400">See all →</button>
+            </div>
+            <div id="recent-table"></div>
+          </div>
+        </section>
+
+        <!-- ============ TRANSACTIONS ============ -->
+        <section id="page-1" class="page hidden">
+          <h2 class="text-2xl font-bold mb-4">All Transactions</h2>
+
+          <!-- Search / date range / export -->
+          <div class="flex flex-wrap gap-3 mb-3 items-center">
+            <div class="relative flex-1 min-w-[200px]">
+              <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">🔍</span>
+              <input id="tx-search" oninput="setSearch(this.value)" placeholder="Search note, category, amount…"
+                     class="w-full bg-gray-900 border border-gray-800 rounded-xl pl-9 pr-4 py-2 text-sm outline-none focus:ring-2 ring-blue-500"/>
+            </div>
+            <select id="tx-range" onchange="setDateRange(this.value)"
+                    class="bg-gray-900 border border-gray-800 rounded-xl px-3 py-2 text-sm outline-none">
+              <option value="all">All time</option>
+              <option value="thismonth">This month</option>
+              <option value="lastmonth">Last month</option>
+              <option value="3m">Last 3 months</option>
+              <option value="custom">Custom…</option>
+            </select>
+            <div id="tx-custom-range" class="hidden gap-2 items-center">
+              <input id="tx-from" type="date" onchange="renderTransactionsTable()" class="bg-gray-900 border border-gray-800 rounded-xl px-3 py-2 text-sm [color-scheme:dark]"/>
+              <span class="text-gray-500 text-sm">to</span>
+              <input id="tx-to" type="date" onchange="renderTransactionsTable()" class="bg-gray-900 border border-gray-800 rounded-xl px-3 py-2 text-sm [color-scheme:dark]"/>
+            </div>
+            <button onclick="exportTransactions()" class="bg-gray-800 hover:bg-gray-700 px-4 py-2 rounded-xl text-sm">⬇ Export CSV</button>
+          </div>
+
+          <div id="tx-filters" class="flex gap-2 mb-3 overflow-x-auto pb-1"></div>
+          <p id="tx-summary" class="text-xs text-gray-500 mb-3"></p>
+
+          <div class="card rounded-2xl overflow-hidden">
+            <div id="all-transactions-table"></div>
+          </div>
+        </section>
+
+        <!-- ============ BUDGETS ============ -->
+        <section id="page-2" class="page hidden">
+          <div class="flex flex-wrap items-center justify-between gap-3 mb-6">
+            <div class="flex items-center gap-3">
+              <h2 class="text-2xl font-bold">Budgets</h2>
+              <input id="budget-month" type="month" onchange="setBudgetMonth(this.value)"
+                     class="bg-gray-900 border border-gray-800 rounded-xl px-3 py-2 text-sm outline-none focus:ring-2 ring-blue-500 [color-scheme:dark]"/>
+            </div>
+            <button onclick="addBudgetCategory()" class="bg-blue-500 hover:bg-blue-400 px-4 py-2 rounded-xl font-semibold text-sm">+ Add Category</button>
+          </div>
+
+          <!-- Summary bar -->
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+            <div class="card rounded-2xl p-5">
+              <p class="text-gray-400 text-sm">Total Budgeted</p>
+              <p id="sum-budgeted" class="text-2xl font-bold mt-1">0</p>
+            </div>
+            <div class="card rounded-2xl p-5">
+              <p class="text-gray-400 text-sm">Total Spent</p>
+              <p id="sum-spent" class="text-2xl font-bold text-orange-400 mt-1">0</p>
+            </div>
+            <div class="card rounded-2xl p-5">
+              <p class="text-gray-400 text-sm">Remaining</p>
+              <p id="sum-remaining" class="text-2xl font-bold text-green-400 mt-1">0</p>
+            </div>
+          </div>
+
+          <div id="budgets-list" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4"></div>
+        </section>
+
+        <!-- ============ ANALYTICS ============ -->
+        <section id="page-3" class="page hidden">
+          <div class="flex items-center justify-between mb-4">
+            <h2 class="text-2xl font-bold">Analytics</h2>
+            <div class="flex bg-gray-900 border border-gray-800 rounded-xl p-1 text-sm">
+              <button id="range-6"  onclick="setRange(6)"  class="px-3 py-1 rounded-lg bg-blue-500 text-white">6M</button>
+              <button id="range-12" onclick="setRange(12)" class="px-3 py-1 rounded-lg">12M</button>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
+            <!-- Monthly Spending -->
+            <div class="card rounded-2xl p-5 xl:col-span-2">
+              <div class="flex items-center justify-between mb-4">
+                <h3 class="font-semibold text-lg">Monthly Spending</h3>
+                <span class="text-xs text-gray-500">Spent vs Budget</span>
+              </div>
+              <div class="relative h-72"><canvas id="barChart"></canvas></div>
+            </div>
+
+            <!-- Spending by Category -->
+            <div class="card rounded-2xl p-5">
+              <h3 class="font-semibold text-lg mb-3">Spending by Category</h3>
+              <canvas id="pieChart" class="max-w-[220px] mx-auto"></canvas>
+              <div id="pie-legend" class="mt-4 space-y-2"></div>
+            </div>
+
+            <!-- Spending Trend -->
+            <div class="card rounded-2xl p-5 xl:col-span-2">
+              <div class="flex items-center justify-between mb-4">
+                <h3 class="font-semibold text-lg">Spending Trend</h3>
+                <span class="text-xs text-gray-500">Total spend per month</span>
+              </div>
+              <div class="relative h-72"><canvas id="trendChart"></canvas></div>
+            </div>
+
+            <!-- Insight cards -->
+            <div id="insight-cards" class="grid grid-cols-2 gap-4 content-start"></div>
+          </div>
+        </section>
+
+        <!-- ============ GOALS ============ -->
+        <section id="page-4" class="page hidden">
+          <div class="flex items-center justify-between mb-4">
+            <h2 class="text-2xl font-bold">Savings Goals</h2>
+            <button onclick="showGoalModal()" class="bg-blue-500 hover:bg-blue-400 px-4 py-2 rounded-xl font-semibold">+ New Goal</button>
+          </div>
+          <div id="goals-list" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4"></div>
+        </section>
+
+        <!-- ============ SETTINGS ============ -->
+        <section id="page-5" class="page hidden max-w-xl">
+          <h2 class="text-2xl font-bold mb-4">Settings</h2>
+
+          <div class="card rounded-2xl p-5 mb-4">
+            <label class="block text-sm text-gray-400 mb-2">Default Currency</label>
+            <select id="currency-select" onchange="setCurrency(this.value)"
+                    class="w-full bg-gray-800 p-3 rounded-xl outline-none focus:ring-2 ring-blue-500"></select>
+            <p class="text-xs text-gray-500 mt-2">Changes the symbol & number formatting across the app. Amounts are not FX-converted.</p>
+          </div>
+
+          <div class="card rounded-2xl p-5 mb-4">
+            <p class="font-medium mb-3">Data</p>
+            <div class="flex flex-wrap gap-3">
+              <button onclick="exportData()" class="bg-gray-800 hover:bg-gray-700 px-4 py-2 rounded-xl text-sm">Export JSON</button>
+              <label class="bg-gray-800 hover:bg-gray-700 px-4 py-2 rounded-xl text-sm cursor-pointer">
+                Import JSON
+                <input type="file" accept="application/json" class="hidden" onchange="importData(event)"/>
+              </label>
+              <button onclick="resetData()" class="bg-gray-800 hover:bg-gray-700 px-4 py-2 rounded-xl text-sm">Reset to sample</button>
+              <button onclick="clearData()" class="bg-red-500/20 text-red-400 hover:bg-red-500/30 px-4 py-2 rounded-xl text-sm">Clear all data</button>
+            </div>
+          </div>
+
+          <div class="card rounded-2xl p-5 mb-4">
+            <p class="font-medium mb-1">Recurring Transactions</p>
+            <p class="text-xs text-gray-500 mb-3">Auto-posted on their schedule. Set one up via the <span class="text-blue-400">Repeat</span> option in the New Transaction sheet.</p>
+            <div id="recurring-list" class="space-y-2"></div>
+          </div>
+        </section>
+
+        <!-- ============ REPORTS ============ -->
+        <section id="page-6" class="page hidden">
+          <div class="flex flex-wrap items-center justify-between gap-3 mb-6 no-print">
+            <div class="flex items-center gap-3">
+              <h2 class="text-2xl font-bold">Reports</h2>
+              <input id="report-month" type="month" onchange="setReportMonth(this.value)"
+                     class="bg-gray-900 border border-gray-800 rounded-xl px-3 py-2 text-sm outline-none focus:ring-2 ring-blue-500 [color-scheme:dark]"/>
+            </div>
+            <button onclick="window.print()" class="bg-blue-500 hover:bg-blue-400 px-4 py-2 rounded-xl font-semibold text-sm">🖨 Print / Save PDF</button>
+          </div>
+          <div id="report-body"></div>
+        </section>
+
+        <!-- ============ PROFILE ============ -->
+        <section id="page-7" class="page hidden max-w-2xl">
+          <h2 class="text-2xl font-bold mb-6">Profile</h2>
+
+          <!-- Identity card -->
+          <div class="card rounded-2xl p-6 mb-6 flex items-center gap-5">
+            <div id="profile-avatar" class="w-20 h-20 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-3xl font-bold text-white shrink-0">?</div>
+            <div class="min-w-0">
+              <p id="profile-name-display" class="text-xl font-bold truncate">User</p>
+              <p id="profile-email-display" class="text-gray-400 text-sm truncate"></p>
+              <p id="profile-since" class="text-gray-500 text-xs mt-1"></p>
+            </div>
+          </div>
+
+          <!-- Data stats -->
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+            <div class="card rounded-2xl p-4"><p class="text-xs text-gray-400">Transactions</p><p id="stat-tx" class="text-xl font-bold mt-1">0</p></div>
+            <div class="card rounded-2xl p-4"><p class="text-xs text-gray-400">Net balance</p><p id="stat-balance" class="text-xl font-bold mt-1">0</p></div>
+            <div class="card rounded-2xl p-4"><p class="text-xs text-gray-400">Accounts</p><p id="stat-accounts" class="text-xl font-bold mt-1">0</p></div>
+            <div class="card rounded-2xl p-4"><p class="text-xs text-gray-400">Goals</p><p id="stat-goals" class="text-xl font-bold mt-1">0</p></div>
+          </div>
+
+          <!-- Account details -->
+          <div class="card rounded-2xl p-6 mb-6">
+            <h3 class="font-semibold mb-4">Account details</h3>
+            <label class="text-sm text-gray-400">Full name</label>
+            <input id="profile-name" type="text" class="w-full bg-gray-800 p-3 rounded-xl mb-4 mt-1 outline-none focus:ring-2 ring-blue-500"/>
+            <label class="text-sm text-gray-400">Email <span class="text-gray-600">(your login ID — can't be changed)</span></label>
+            <input id="profile-email" type="email" disabled class="w-full bg-gray-800/50 text-gray-400 p-3 rounded-xl mb-4 mt-1 outline-none cursor-not-allowed"/>
+            <button onclick="saveProfile()" class="bg-blue-500 hover:bg-blue-400 px-5 py-2.5 rounded-xl font-semibold">Save changes</button>
+          </div>
+
+          <!-- Change password -->
+          <div class="card rounded-2xl p-6 mb-6">
+            <h3 class="font-semibold mb-4">Change password</h3>
+            <input id="pw-current" type="password" placeholder="Current password" class="w-full bg-gray-800 p-3 rounded-xl mb-3 outline-none focus:ring-2 ring-blue-500"/>
+            <input id="pw-new" type="password" placeholder="New password" class="w-full bg-gray-800 p-3 rounded-xl mb-3 outline-none focus:ring-2 ring-blue-500"/>
+            <input id="pw-confirm" type="password" placeholder="Confirm new password" class="w-full bg-gray-800 p-3 rounded-xl mb-3 outline-none focus:ring-2 ring-blue-500"/>
+            <p id="pw-error" class="hidden text-sm text-red-400 mb-3"></p>
+            <button onclick="changePassword()" class="bg-gray-800 hover:bg-gray-700 px-5 py-2.5 rounded-xl font-semibold">Update password</button>
+          </div>
+
+          <button onclick="logout()" class="text-red-400 hover:text-red-300 text-sm">↩ Log out</button>
+        </section>
+
+      </div>
+    </main>
+  </div>
+
+  <!-- FAB (mobile) -->
+  <button onclick="showAddModal()"
+          class="no-print sm:hidden fixed bottom-6 right-6 w-14 h-14 bg-blue-500 rounded-full text-3xl shadow-lg flex items-center justify-center z-30">+</button>
+
+  <!-- ADD TRANSACTION MODAL -->
+  <div id="add-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-40 p-4">
+    <div class="bg-gray-900 border border-gray-800 w-full max-w-md rounded-3xl p-6 sheet-enter max-h-[92vh] overflow-y-auto">
+      <h2 id="modal-title" class="text-2xl font-bold mb-6">New Transaction</h2>
+      <div class="flex gap-2 mb-6">
+        <button id="btn-income" onclick="setType('income')" class="flex-1 py-3 rounded-xl bg-gray-800">Income</button>
+        <button id="btn-expense" onclick="setType('expense')" class="flex-1 py-3 rounded-xl bg-orange-500 ring-2 ring-white">Expense</button>
+      </div>
+      <input id="amount" type="number" inputmode="decimal" placeholder="0" class="w-full bg-gray-800 text-4xl p-4 rounded-2xl text-center mb-4 outline-none focus:ring-2 ring-blue-500"/>
+      <select id="category" class="w-full bg-gray-800 p-4 rounded-2xl mb-4 outline-none"></select>
+      <div class="grid grid-cols-2 gap-3 mb-4">
+        <select id="account" class="bg-gray-800 p-4 rounded-2xl outline-none"></select>
+        <select id="repeat" class="bg-gray-800 p-4 rounded-2xl outline-none">
+          <option value="none">One-time</option>
+          <option value="daily">Repeat daily</option>
+          <option value="weekly">Repeat weekly</option>
+          <option value="monthly">Repeat monthly</option>
+        </select>
+      </div>
+      <input id="note" type="text" placeholder="Note (optional)" class="w-full bg-gray-800 p-4 rounded-2xl mb-4 outline-none focus:ring-2 ring-blue-500"/>
+      <input id="date" type="date" class="w-full bg-gray-800 p-4 rounded-2xl mb-4 outline-none [color-scheme:dark]"/>
+      <button onclick="saveTransaction()" class="w-full bg-blue-500 hover:bg-blue-400 py-4 rounded-2xl text-lg font-semibold">Save Transaction</button>
+      <button onclick="hideAddModal()" class="w-full mt-3 py-4 text-gray-400">Cancel</button>
+    </div>
+  </div>
+
+  <!-- GOAL MODAL -->
+  <div id="goal-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-40 p-4">
+    <div class="bg-gray-900 border border-gray-800 w-full max-w-md rounded-3xl p-6 sheet-enter">
+      <h2 id="goal-modal-title" class="text-2xl font-bold mb-6">New Goal</h2>
+      <div class="flex gap-3 mb-4">
+        <input id="goal-icon" maxlength="2" value="🎯" class="w-16 bg-gray-800 text-2xl p-3 rounded-2xl text-center outline-none"/>
+        <input id="goal-name" type="text" placeholder="Goal name" class="flex-1 bg-gray-800 p-4 rounded-2xl outline-none focus:ring-2 ring-blue-500"/>
+      </div>
+      <label class="text-sm text-gray-400">Target amount</label>
+      <input id="goal-target" type="number" placeholder="0" class="w-full bg-gray-800 p-4 rounded-2xl mb-4 mt-1 outline-none focus:ring-2 ring-blue-500"/>
+      <div id="goal-saved-wrap" class="hidden">
+        <label class="text-sm text-gray-400">Amount already saved</label>
+        <input id="goal-saved" type="number" placeholder="0" class="w-full bg-gray-800 p-4 rounded-2xl mb-4 mt-1 outline-none focus:ring-2 ring-blue-500"/>
+      </div>
+      <button onclick="saveGoal()" class="w-full bg-blue-500 hover:bg-blue-400 py-4 rounded-2xl text-lg font-semibold">Save Goal</button>
+      <button onclick="hideGoalModal()" class="w-full mt-3 py-4 text-gray-400">Cancel</button>
+    </div>
+  </div>
+
+  <!-- ADD FUNDS MODAL -->
+  <div id="funds-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-40 p-4">
+    <div class="bg-gray-900 border border-gray-800 w-full max-w-sm rounded-3xl p-6 sheet-enter">
+      <h2 class="text-xl font-bold mb-1">Add Funds</h2>
+      <p id="funds-goal-name" class="text-gray-400 text-sm mb-5"></p>
+      <input id="funds-amount" type="number" placeholder="0" class="w-full bg-gray-800 text-3xl p-4 rounded-2xl text-center mb-4 outline-none focus:ring-2 ring-blue-500"/>
+      <div class="flex gap-2 mb-4">
+        <button onclick="quickFund(1000)" class="flex-1 bg-gray-800 hover:bg-gray-700 py-2 rounded-xl text-sm">+1k</button>
+        <button onclick="quickFund(5000)" class="flex-1 bg-gray-800 hover:bg-gray-700 py-2 rounded-xl text-sm">+5k</button>
+        <button onclick="quickFund(10000)" class="flex-1 bg-gray-800 hover:bg-gray-700 py-2 rounded-xl text-sm">+10k</button>
+      </div>
+      <button onclick="saveFunds()" class="w-full bg-blue-500 hover:bg-blue-400 py-3 rounded-2xl font-semibold">Add</button>
+      <button onclick="hideFundsModal()" class="w-full mt-2 py-3 text-gray-400">Cancel</button>
+    </div>
+  </div>
+
+  <!-- TRANSFER MODAL -->
+  <div id="transfer-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-40 p-4">
+    <div class="bg-gray-900 border border-gray-800 w-full max-w-md rounded-3xl p-6 sheet-enter">
+      <h2 class="text-2xl font-bold mb-6">Transfer</h2>
+      <input id="transfer-amount" type="number" placeholder="0" class="w-full bg-gray-800 text-4xl p-4 rounded-2xl text-center mb-4 outline-none focus:ring-2 ring-blue-500"/>
+      <div class="flex items-center gap-3 mb-4">
+        <select id="transfer-from" class="flex-1 bg-gray-800 p-4 rounded-2xl outline-none"></select>
+        <span class="text-gray-500 text-xl">→</span>
+        <select id="transfer-to" class="flex-1 bg-gray-800 p-4 rounded-2xl outline-none"></select>
+      </div>
+      <input id="transfer-note" type="text" placeholder="Note (optional)" class="w-full bg-gray-800 p-4 rounded-2xl mb-4 outline-none focus:ring-2 ring-blue-500"/>
+      <input id="transfer-date" type="date" class="w-full bg-gray-800 p-4 rounded-2xl mb-4 outline-none [color-scheme:dark]"/>
+      <button onclick="saveTransfer()" class="w-full bg-blue-500 hover:bg-blue-400 py-4 rounded-2xl text-lg font-semibold">Transfer</button>
+      <button onclick="hideTransferModal()" class="w-full mt-3 py-4 text-gray-400">Cancel</button>
+    </div>
+  </div>
+
+  <!-- TOAST -->
+  <div id="toast" class="hidden fixed bottom-8 left-1/2 -translate-x-1/2 bg-blue-500 text-white px-5 py-3 rounded-full shadow-lg z-50 text-sm font-medium"></div>
+
+  <script>
+    /* ---------- Config ---------- */
+    const CATEGORIES = {
+      Food:          { label: 'Food & Groceries', icon: '🍔', color: '#f59e0b', kind: 'expense' },
+      Transport:     { label: 'Transport',        icon: '🚌', color: '#14b8a6', kind: 'expense' },
+      Shopping:      { label: 'Shopping',         icon: '🛍️', color: '#8b5cf6', kind: 'expense' },
+      Bills:         { label: 'Bills & Utilities',icon: '💡', color: '#ec4899', kind: 'expense' },
+      Entertainment: { label: 'Entertainment',    icon: '🎬', color: '#ef4444', kind: 'expense' },
+      Health:        { label: 'Health',           icon: '🩺', color: '#06b6d4', kind: 'expense' },
+      Salary:        { label: 'Salary',           icon: '💼', color: '#22c55e', kind: 'income'  },
+      Other:         { label: 'Other',            icon: '📦', color: '#64748b', kind: 'both'    },
+    };
+    const DEFAULT_BUDGETS = { Food: 25000, Transport: 8000, Shopping: 15000, Bills: 12000, Entertainment: 6000, Health: 5000 };
+    const DEFAULT_ACCOUNTS = [
+      { id: 'cash', name: 'Cash', icon: '💵', color: '#22c55e' },
+      { id: 'bank', name: 'Bank', icon: '🏦', color: '#3b82f6' },
+      { id: 'card', name: 'Card', icon: '💳', color: '#8b5cf6' },
+    ];
+    const CURRENCIES = {
+      INR: { symbol: '₹',   locale: 'en-IN', name: 'Indian Rupee' },
+      USD: { symbol: '$',   locale: 'en-US', name: 'US Dollar' },
+      MVR: { symbol: 'Rf ', locale: 'en-US', name: 'Maldivian Rufiyaa' },
+      EUR: { symbol: '€',   locale: 'de-DE', name: 'Euro' },
+      GBP: { symbol: '£',   locale: 'en-GB', name: 'British Pound' },
+      AED: { symbol: 'AED ',locale: 'en-US', name: 'UAE Dirham' },
+    };
+
+    /* ---------- State ---------- */
+    let transactions = JSON.parse(localStorage.getItem('fw_transactions')) || null;
+    let budgets      = JSON.parse(localStorage.getItem('fw_budgets')) || DEFAULT_BUDGETS;
+    let goals        = JSON.parse(localStorage.getItem('fw_goals')) || null;
+    let accounts     = JSON.parse(localStorage.getItem('fw_accounts')) || null;
+    let recurring    = JSON.parse(localStorage.getItem('fw_recurring')) || null;
+    let currency     = localStorage.getItem('fw_currency') || 'INR';
+    let currentType  = 'expense';
+    let editingId    = null;
+    let activeFilter = 'all';
+    let txSearch     = '';
+    let txRange      = 'all';
+    let currentPage  = 0;
+    let analyticsRange = 6;
+    let budgetMonth  = new Date();
+    let reportMonth  = new Date();
+    let charts       = {};
+
+    const SEED_VERSION = 2;
+    // Signature of the original single-month sample — used to detect untouched legacy data.
+    function isPristineOldSample(txns) {
+      if (!Array.isArray(txns) || txns.length !== 8) return false;
+      const sig = txns.map(t => `${t.id}:${t.amount}:${t.category}`).join('|');
+      return sig === '1:285000:Salary|2:42000:Bills|3:6800:Food|4:2400:Transport|5:12500:Shopping|6:1800:Entertainment|7:3200:Food|8:950:Health';
+    }
+
+    function seedIfEmpty() {
+      // One-time auto-upgrade: swap the untouched old sample for the richer 6-month sample.
+      // Any user-modified data (different length/ids) won't match, so it's never touched.
+      if (transactions && parseInt(localStorage.getItem('fw_seed_version') || '0') < SEED_VERSION && isPristineOldSample(transactions)) {
+        transactions = null;
+      }
+      if (transactions === null) {
+        transactions = [];
+        let id = 1;
+        const today = new Date();
+        const rnd = (a, b) => a + Math.round(Math.random() * (b - a));
+        // 6 months of history so the analytics charts look populated
+        for (let m = 5; m >= 0; m--) {
+          const ref = new Date(today.getFullYear(), today.getMonth() - m, 1);
+          const maxDay = (m === 0) ? today.getDate() : 28; // never place future-dated entries
+          const day = (d) => new Date(ref.getFullYear(), ref.getMonth(), Math.min(d, maxDay)).toISOString().slice(0, 10);
+          transactions.push(
+            { id: id++, type: 'income',  amount: 285000,            category: 'Salary',        note: 'Monthly salary', date: day(1),  account: 'bank' },
+            { id: id++, type: 'expense', amount: 42000,             category: 'Bills',         note: 'Rent',           date: day(2),  account: 'bank' },
+            { id: id++, type: 'expense', amount: rnd(6000, 10000),  category: 'Food',          note: 'Groceries',      date: day(5),  account: 'card' },
+            { id: id++, type: 'expense', amount: rnd(3000, 6000),   category: 'Food',          note: 'Dining',         date: day(12), account: 'card' },
+            { id: id++, type: 'expense', amount: rnd(2000, 4500),   category: 'Transport',     note: 'Fuel',           date: day(8),  account: 'cash' },
+            { id: id++, type: 'expense', amount: rnd(4000, 13000),  category: 'Shopping',      note: 'Shopping',       date: day(15), account: 'card' },
+            { id: id++, type: 'expense', amount: rnd(1500, 4000),   category: 'Entertainment', note: 'Outing',         date: day(20), account: 'cash' },
+            { id: id++, type: 'expense', amount: rnd(800, 2500),    category: 'Health',        note: 'Pharmacy',       date: day(24), account: 'card' },
+          );
+        }
+      }
+      if (goals === null) {
+        goals = [
+          { id: 1, name: 'Emergency Fund', target: 200000, saved: 85000, icon: '🛟' },
+          { id: 2, name: 'New Laptop',     target: 120000, saved: 45000, icon: '💻' },
+          { id: 3, name: 'Vacation',       target: 150000, saved: 30000, icon: '✈️' },
+        ];
+      }
+      if (accounts === null) accounts = DEFAULT_ACCOUNTS.map(a => ({ ...a }));
+      if (recurring === null) {
+        const nextFirst = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 1).toISOString().slice(0, 10);
+        recurring = [
+          { id: 101, type: 'income',  amount: 285000, category: 'Salary', note: 'Monthly salary', account: 'bank', frequency: 'monthly', nextDate: nextFirst, active: true },
+          { id: 102, type: 'expense', amount: 42000,  category: 'Bills',  note: 'Rent',           account: 'bank', frequency: 'monthly', nextDate: nextFirst, active: true },
+        ];
+      }
+      // Migrate older transactions that predate accounts
+      transactions.forEach(t => { if (!t.account && t.type !== 'transfer') t.account = 'bank'; });
+      localStorage.setItem('fw_seed_version', SEED_VERSION);
+    }
+
+    // Advance a date by a recurrence frequency
+    function advanceDate(d, freq) {
+      const x = new Date(d);
+      if (freq === 'daily') x.setDate(x.getDate() + 1);
+      else if (freq === 'weekly') x.setDate(x.getDate() + 7);
+      else x.setMonth(x.getMonth() + 1);
+      return x;
+    }
+
+    // Post any recurring transactions whose nextDate has arrived
+    function processRecurring() {
+      const today = new Date(); today.setHours(0, 0, 0, 0);
+      let posted = 0, uid = Date.now();
+      (recurring || []).forEach(r => {
+        if (!r.active) return;
+        let next = parseDate(r.nextDate);
+        let guard = 0;
+        while (next <= today && guard < 500) {
+          transactions.unshift({ id: uid++, type: r.type, amount: r.amount, category: r.category,
+            note: r.note, account: r.account || 'bank', date: next.toISOString().slice(0, 10), recurringId: r.id });
+          next = advanceDate(next, r.frequency);
+          posted++; guard++;
+        }
+        r.nextDate = next.toISOString().slice(0, 10);
+      });
+      return posted;
+    }
+
+    /* ---------- Persistence ---------- */
+    function saveData() {
+      localStorage.setItem('fw_transactions', JSON.stringify(transactions));
+      localStorage.setItem('fw_budgets', JSON.stringify(budgets));
+      localStorage.setItem('fw_goals', JSON.stringify(goals));
+      localStorage.setItem('fw_accounts', JSON.stringify(accounts));
+      localStorage.setItem('fw_recurring', JSON.stringify(recurring));
+      localStorage.setItem('fw_currency', currency);
+    }
+
+    /* ---------- Helpers ---------- */
+    const cur = () => CURRENCIES[currency] || CURRENCIES.INR;
+    const fmt = (n) => cur().symbol + Math.round(n).toLocaleString(cur().locale);
+    const fmtK = (v) => cur().symbol + (v / 1000).toLocaleString(cur().locale) + 'k';
+    const cat = (key) => CATEGORIES[key] || CATEGORIES.Other;
+    const sameMonth = (dateStr, ref = new Date()) => {
+      const d = new Date(dateStr);
+      return d.getFullYear() === ref.getFullYear() && d.getMonth() === ref.getMonth();
+    };
+    const sortByDate = (list) => [...list].sort((a, b) => new Date(b.date) - new Date(a.date) || b.id - a.id);
+    const monthStr = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    const parseDate = (str) => new Date(str + 'T00:00:00'); // parse YYYY-MM-DD as local midnight
+
+    function monthTotals(ref = new Date()) {
+      let income = 0, expenses = 0;
+      transactions.filter(t => sameMonth(t.date, ref)).forEach(t => {
+        if (t.type === 'income') income += t.amount;
+        else if (t.type === 'expense') expenses += t.amount; // transfers excluded
+      });
+      return { income, expenses };
+    }
+    const totalBalance = () => transactions.reduce((s, t) =>
+      t.type === 'income' ? s + t.amount : t.type === 'expense' ? s - t.amount : s, 0); // transfers net to zero
+    const accountById = (id) => (accounts || []).find(a => a.id === id) || { name: '—', icon: '💼', color: '#64748b' };
+    function accountBalance(id) {
+      return transactions.reduce((b, t) => {
+        if (t.type === 'transfer') { if (t.account === id) b -= t.amount; if (t.toAccount === id) b += t.amount; }
+        else if ((t.account || 'bank') === id) b += (t.type === 'income' ? t.amount : -t.amount);
+        return b;
+      }, 0);
+    }
+    const spentByCategory = (ref = new Date()) => {
+      const m = {};
+      transactions.filter(t => t.type === 'expense' && sameMonth(t.date, ref))
+        .forEach(t => m[t.category] = (m[t.category] || 0) + t.amount);
+      return m;
+    };
+
+    /* ---------- Header ---------- */
+    function renderHeader() {
+      const now = new Date();
+      document.getElementById('header-month').textContent =
+        now.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+      document.getElementById('header-balance').textContent = fmt(totalBalance());
+
+      const { income, expenses } = monthTotals();
+      const net = income - expenses;
+      document.getElementById('header-change').textContent =
+        (net >= 0 ? '+' : '-') + fmt(Math.abs(net)) + ' net this month';
+      document.getElementById('card-income').textContent = fmt(income);
+      document.getElementById('card-expenses').textContent = fmt(expenses);
+
+      // notification badge = over-budget categories
+      const spent = spentByCategory();
+      const over = Object.keys(budgets).filter(k => (spent[k] || 0) > budgets[k]).length;
+      const badge = document.getElementById('notif-badge');
+      badge.textContent = over;
+      badge.classList.toggle('hidden', over === 0);
+    }
+
+    /* ---------- Transaction table rows ---------- */
+    const dateShort = (d) => new Date(d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+
+    function txTable(list) {
+      if (!list.length) return `<p class="text-gray-500 text-center py-10">No transactions to show.</p>`;
+      const rows = list.map(t => {
+        if (t.type === 'transfer') {
+          const from = accountById(t.account), to = accountById(t.toAccount);
+          return `<tr class="border-t border-gray-800 hover:bg-gray-800/40">
+            <td class="px-5 py-3 text-gray-400 whitespace-nowrap">${dateShort(t.date)}</td>
+            <td class="px-5 py-3">${t.note || 'Transfer'}</td>
+            <td class="px-5 py-3"><span class="inline-flex items-center gap-2"><span class="w-6 h-6 rounded-full flex items-center justify-center text-xs bg-gray-700">🔄</span><span class="text-gray-300">Transfer</span></span></td>
+            <td class="px-5 py-3 whitespace-nowrap text-xs text-gray-400">${from.icon} ${from.name} → ${to.icon} ${to.name}</td>
+            <td class="px-5 py-3 text-right font-semibold text-blue-300 whitespace-nowrap">${fmt(t.amount)}</td>
+            <td class="px-3 py-3 text-right"><button onclick="deleteTransaction(${t.id})" class="text-gray-500 hover:text-red-400 px-1">🗑</button></td>
+          </tr>`;
+        }
+        const c = cat(t.category), acc = accountById(t.account);
+        return `<tr class="border-t border-gray-800 hover:bg-gray-800/40">
+          <td class="px-5 py-3 text-gray-400 whitespace-nowrap">${dateShort(t.date)}</td>
+          <td class="px-5 py-3">${t.note ? t.note : c.label}${t.recurringId ? ' <span class="text-[10px] text-blue-400">↻</span>' : ''}</td>
+          <td class="px-5 py-3"><span class="inline-flex items-center gap-2"><span class="w-6 h-6 rounded-full flex items-center justify-center text-xs" style="background:${c.color}33">${c.icon}</span><span class="text-gray-300">${c.label}</span></span></td>
+          <td class="px-5 py-3 whitespace-nowrap text-xs text-gray-400">${acc.icon} ${acc.name}</td>
+          <td class="px-5 py-3 text-right font-semibold ${t.type === 'income' ? 'text-green-400' : 'text-orange-400'} whitespace-nowrap">${t.type === 'income' ? '+' : '-'}${fmt(t.amount)}</td>
+          <td class="px-3 py-3 text-right">
+            <button onclick="editTransaction(${t.id})" class="text-gray-500 hover:text-blue-400 px-1">✎</button>
+            <button onclick="deleteTransaction(${t.id})" class="text-gray-500 hover:text-red-400 px-1">🗑</button>
+          </td>
+        </tr>`;
+      }).join('');
+      return `<table class="w-full text-left text-sm">
+        <thead class="text-gray-500 text-xs uppercase tracking-wide">
+          <tr><th class="px-5 py-3 font-medium">Date</th><th class="px-5 py-3 font-medium">Description</th><th class="px-5 py-3 font-medium">Category</th><th class="px-5 py-3 font-medium">Account</th><th class="px-5 py-3 font-medium text-right">Amount</th><th></th></tr>
+        </thead><tbody>${rows}</tbody></table>`;
+    }
+
+    function renderRecentTable() {
+      document.getElementById('recent-table').innerHTML = txTable(sortByDate(transactions).slice(0, 6));
+    }
+
+    function renderFilters() {
+      const wrap = document.getElementById('tx-filters');
+      const keys = ['all', 'income', ...Object.keys(CATEGORIES).filter(k => CATEGORIES[k].kind !== 'income')];
+      wrap.innerHTML = keys.map(k => {
+        const active = activeFilter === k;
+        const label = k === 'all' ? 'All' : k === 'income' ? 'Income' : cat(k).label;
+        return `<button onclick="setFilter('${k}')" class="px-3 py-1.5 rounded-full text-sm whitespace-nowrap ${active ? 'bg-blue-500 text-white' : 'bg-gray-800 text-gray-300 hover:bg-gray-700'}">${label}</button>`;
+      }).join('');
+    }
+    function setFilter(k) { activeFilter = k; renderTransactionsTable(); renderFilters(); }
+    function setSearch(v) { txSearch = v.trim().toLowerCase(); renderTransactionsTable(); }
+    function setDateRange(v) {
+      txRange = v;
+      document.getElementById('tx-custom-range').classList.toggle('hidden', v !== 'custom');
+      document.getElementById('tx-custom-range').classList.toggle('flex', v === 'custom');
+      renderTransactionsTable();
+    }
+
+    function dateRangeBounds() {
+      const now = new Date();
+      const first = (y, m) => new Date(y, m, 1);
+      if (txRange === 'thismonth') return { from: first(now.getFullYear(), now.getMonth()), to: null };
+      if (txRange === 'lastmonth') return { from: first(now.getFullYear(), now.getMonth() - 1), to: new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59) };
+      if (txRange === '3m')        return { from: first(now.getFullYear(), now.getMonth() - 2), to: null };
+      if (txRange === 'custom') {
+        const f = document.getElementById('tx-from').value, t = document.getElementById('tx-to').value;
+        return { from: f ? parseDate(f) : null, to: t ? new Date(t + 'T23:59:59') : null };
+      }
+      return { from: null, to: null };
+    }
+
+    function getFilteredTransactions() {
+      let list = sortByDate(transactions);
+      if (activeFilter === 'income') list = list.filter(t => t.type === 'income');
+      else if (activeFilter !== 'all') list = list.filter(t => t.category === activeFilter && t.type === 'expense');
+      if (txSearch) list = list.filter(t =>
+        (t.note || '').toLowerCase().includes(txSearch) ||
+        cat(t.category).label.toLowerCase().includes(txSearch) ||
+        String(t.amount).includes(txSearch));
+      const { from, to } = dateRangeBounds();
+      if (from) list = list.filter(t => parseDate(t.date) >= from);
+      if (to)   list = list.filter(t => parseDate(t.date) <= to);
+      return list;
+    }
+
+    function renderTransactionsTable() {
+      const list = getFilteredTransactions();
+      let inc = 0, exp = 0;
+      list.forEach(t => t.type === 'income' ? inc += t.amount : exp += t.amount);
+      document.getElementById('tx-summary').textContent =
+        `${list.length} result${list.length !== 1 ? 's' : ''} · Income ${fmt(inc)} · Expenses ${fmt(exp)}`;
+      document.getElementById('all-transactions-table').innerHTML = txTable(list);
+    }
+
+    function exportTransactions() {
+      const list = getFilteredTransactions();
+      if (!list.length) { toast('Nothing to export'); return; }
+      const esc = (v) => `"${String(v).replace(/"/g, '""')}"`;
+      const rows = [['Date', 'Type', 'Category', 'Note', 'Amount']];
+      list.forEach(t => rows.push([t.date, t.type, cat(t.category).label, t.note || '', t.amount]));
+      const csv = rows.map(r => r.map(esc).join(',')).join('\n');
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
+      a.download = `flowwallet-transactions-${monthStr(new Date())}.csv`;
+      a.click(); URL.revokeObjectURL(a.href);
+      toast(`Exported ${list.length} transactions`);
+    }
+
+    /* ---------- Budget rings (dashboard) ---------- */
+    function ring(pct, color, size = 56) {
+      const over = pct > 100, p = Math.min(100, pct);
+      return `<svg viewBox="0 0 36 36" width="${size}" height="${size}" class="shrink-0">
+        <circle cx="18" cy="18" r="15.915" fill="none" stroke="#374151" stroke-width="3.5"/>
+        <circle cx="18" cy="18" r="15.915" fill="none" stroke="${over ? '#ef4444' : color}" stroke-width="3.5" stroke-linecap="round"
+          stroke-dasharray="${p} 100" transform="rotate(-90 18 18)"/>
+        <text x="18" y="20.5" text-anchor="middle" font-size="9" fill="#e5e7eb">${Math.round(pct)}%</text>
+      </svg>`;
+    }
+    function renderBudgetRings() {
+      const spent = spentByCategory();
+      const wrap = document.getElementById('budget-rings');
+      const keys = Object.keys(budgets).slice(0, 4);
+      wrap.innerHTML = keys.map(k => {
+        const c = cat(k), limit = budgets[k], s = spent[k] || 0, pct = limit ? (s / limit) * 100 : 0;
+        return `<div class="flex items-center gap-4 p-2 rounded-xl hover:bg-gray-800/50">
+          ${ring(pct, c.color)}
+          <div class="min-w-0 flex-1">
+            <p class="font-medium flex items-center gap-2">${c.icon} ${c.label}</p>
+            <p class="text-sm ${s > limit ? 'text-red-400' : 'text-gray-400'}">${fmt(s)} <span class="text-gray-600">/ ${fmt(limit)}</span></p>
+          </div>
+        </div>`;
+      }).join('');
+    }
+
+    /* ---------- Budgets page ---------- */
+    // Green → yellow → orange → red as the budget fills
+    function ringColor(pct) {
+      if (pct >= 100) return '#ef4444';
+      if (pct >= 85)  return '#f97316';
+      if (pct >= 60)  return '#eab308';
+      return '#3b82f6';
+    }
+    function budgetRing(pct, color, size = 128) {
+      const p = Math.min(100, pct);
+      return `<svg viewBox="0 0 36 36" width="${size}" height="${size}" class="mx-auto">
+        <circle cx="18" cy="18" r="15.915" fill="none" stroke="#1f2937" stroke-width="3"/>
+        <circle cx="18" cy="18" r="15.915" fill="none" stroke="${color}" stroke-width="3" stroke-linecap="round"
+          stroke-dasharray="${p} 100" transform="rotate(-90 18 18)"/>
+        <text x="18" y="17.5" text-anchor="middle" font-size="7" font-weight="bold" fill="#fff">${Math.round(pct)}%</text>
+        <text x="18" y="23" text-anchor="middle" font-size="3" fill="#9ca3af">used</text>
+      </svg>`;
+    }
+
+    function renderBudgets() {
+      const spent = spentByCategory(budgetMonth);
+      const keys = Object.keys(budgets);
+      const totalBudget = keys.reduce((a, k) => a + budgets[k], 0);
+      const totalSpent  = keys.reduce((a, k) => a + (spent[k] || 0), 0);
+      const remaining   = totalBudget - totalSpent;
+
+      document.getElementById('sum-budgeted').textContent = fmt(totalBudget);
+      document.getElementById('sum-spent').textContent    = fmt(totalSpent);
+      const remEl = document.getElementById('sum-remaining');
+      remEl.textContent = fmt(remaining);
+      remEl.className = `text-2xl font-bold mt-1 ${remaining < 0 ? 'text-red-400' : 'text-green-400'}`;
+
+      document.getElementById('budgets-list').innerHTML = keys.map(key => {
+        const c = cat(key), limit = budgets[key], s = spent[key] || 0;
+        const pct = limit ? (s / limit) * 100 : 0, over = s > limit;
+        return `<div class="card rounded-2xl p-5">
+          <div class="flex justify-between items-center mb-3">
+            <span class="flex items-center gap-2 font-medium">${c.icon} ${c.label}</span>
+            <button onclick="editBudget('${key}')" class="text-xs text-blue-400">Edit</button>
+          </div>
+          ${budgetRing(pct, ringColor(pct))}
+          <p class="mt-3 text-center text-sm ${over ? 'text-red-400' : 'text-gray-300'}">
+            ${fmt(s)} <span class="text-gray-500">spent of</span> ${fmt(limit)}
+          </p>
+          ${over ? `<p class="text-center text-xs text-red-400 mt-1">Over by ${fmt(s - limit)}</p>` : ''}
+        </div>`;
+      }).join('');
+    }
+
+    function setBudgetMonth(val) {
+      if (!val) return;
+      budgetMonth = new Date(+val.slice(0, 4), +val.slice(5, 7) - 1, 1);
+      renderBudgets();
+    }
+
+    function addBudgetCategory() {
+      const options = Object.keys(CATEGORIES).filter(k => CATEGORIES[k].kind !== 'income');
+      const choice = prompt(`Which category?\n${options.join(', ')}`);
+      if (!choice) return;
+      const key = options.find(k => k.toLowerCase() === choice.trim().toLowerCase() || cat(k).label.toLowerCase() === choice.trim().toLowerCase());
+      if (!key) { toast('Unknown category'); return; }
+      const amt = parseFloat(prompt(`Monthly budget for ${cat(key).label}:`, budgets[key] || 0));
+      if (isNaN(amt) || amt < 0) { toast('Enter a valid amount'); return; }
+      budgets[key] = amt;
+      saveData(); renderBudgets(); renderBudgetRings(); renderHeader(); toast('Budget saved');
+    }
+
+    /* ---------- Goals page ---------- */
+    function renderGoals() {
+      const wrap = document.getElementById('goals-list');
+      if (!goals.length) { wrap.innerHTML = `<p class="text-gray-500">No goals yet. Add one to start saving.</p>`; return; }
+      wrap.innerHTML = goals.map(g => {
+        const pct = g.target ? Math.min(100, (g.saved / g.target) * 100) : 0, done = g.saved >= g.target;
+        return `<div class="card rounded-2xl p-5">
+          <div class="flex justify-between items-start mb-3">
+            <span class="text-3xl">${g.icon || '🎯'}</span>
+            <div class="flex gap-2">
+              <button onclick="showGoalModal(${g.id})" class="text-gray-500 hover:text-blue-400 text-sm">✎</button>
+              <button onclick="deleteGoal(${g.id})" class="text-gray-500 hover:text-red-400 text-sm">🗑</button>
+            </div>
+          </div>
+          <p class="font-semibold text-lg">${g.name}</p>
+          <p class="text-sm text-gray-400 mb-3">${fmt(g.saved)} of ${fmt(g.target)}</p>
+          <div class="w-full bg-gray-800 rounded-full h-2 mb-3">
+            <div class="h-2 rounded-full ${done ? 'bg-green-500' : 'bg-blue-500'}" style="width:${pct}%"></div>
+          </div>
+          <div class="flex items-center justify-between">
+            <span class="text-sm ${done ? 'text-green-400' : 'text-blue-400'}">${done ? '✓ Reached!' : Math.round(pct) + '% saved'}</span>
+            <button onclick="showFundsModal(${g.id})" class="text-sm bg-gray-800 hover:bg-gray-700 px-3 py-1.5 rounded-lg">+ Add funds</button>
+          </div>
+        </div>`;
+      }).join('');
+    }
+    let editingGoalId = null, fundsGoalId = null;
+
+    function showGoalModal(id) {
+      editingGoalId = id || null;
+      const g = id ? goals.find(x => x.id === id) : null;
+      document.getElementById('goal-modal-title').textContent = g ? 'Edit Goal' : 'New Goal';
+      document.getElementById('goal-icon').value = g ? (g.icon || '🎯') : '🎯';
+      document.getElementById('goal-name').value = g ? g.name : '';
+      document.getElementById('goal-target').value = g ? g.target : '';
+      document.getElementById('goal-saved-wrap').classList.toggle('hidden', !g);
+      if (g) document.getElementById('goal-saved').value = g.saved;
+      document.getElementById('goal-modal').classList.remove('hidden');
+    }
+    function hideGoalModal() { document.getElementById('goal-modal').classList.add('hidden'); }
+    function saveGoal() {
+      const name = document.getElementById('goal-name').value.trim();
+      const target = parseFloat(document.getElementById('goal-target').value);
+      const icon = document.getElementById('goal-icon').value.trim() || '🎯';
+      if (!name) { toast('Enter a goal name'); return; }
+      if (!target || target <= 0) { toast('Enter a valid target'); return; }
+      if (editingGoalId) {
+        const g = goals.find(x => x.id === editingGoalId);
+        g.name = name; g.target = target; g.icon = icon;
+        g.saved = Math.max(0, parseFloat(document.getElementById('goal-saved').value) || 0);
+        toast('Goal updated');
+      } else {
+        goals.push({ id: Date.now(), name, target, saved: 0, icon });
+        toast('Goal added');
+      }
+      saveData(); renderGoals(); renderNotifications(); hideGoalModal();
+    }
+    function deleteGoal(id) {
+      if (!confirm('Delete this goal?')) return;
+      goals = goals.filter(x => x.id !== id);
+      saveData(); renderGoals(); renderNotifications(); toast('Goal deleted');
+    }
+
+    function showFundsModal(id) {
+      const g = goals.find(x => x.id === id); if (!g) return;
+      fundsGoalId = id;
+      document.getElementById('funds-goal-name').textContent = `${g.icon} ${g.name} — ${fmt(g.saved)} of ${fmt(g.target)}`;
+      document.getElementById('funds-amount').value = '';
+      document.getElementById('funds-modal').classList.remove('hidden');
+    }
+    function hideFundsModal() { document.getElementById('funds-modal').classList.add('hidden'); }
+    function quickFund(n) {
+      const el = document.getElementById('funds-amount');
+      el.value = (parseFloat(el.value) || 0) + n;
+    }
+    function saveFunds() {
+      const g = goals.find(x => x.id === fundsGoalId); if (!g) return;
+      const amt = parseFloat(document.getElementById('funds-amount').value);
+      if (!amt) { toast('Enter an amount'); return; }
+      g.saved = Math.max(0, g.saved + amt);
+      saveData(); renderGoals(); renderNotifications(); hideFundsModal();
+      toast(g.saved >= g.target ? '🎉 Goal reached!' : 'Funds added');
+    }
+
+    /* ---------- Charts ---------- */
+    function renderCashflowChart() {
+      const days = 30, today = new Date(), labels = [], data = [];
+      let running = transactions.filter(t => (today - new Date(t.date)) / 86400000 > days)
+        .reduce((s, t) => s + (t.type === 'income' ? t.amount : -t.amount), 0);
+      for (let i = days; i >= 0; i--) {
+        const day = new Date(today); day.setDate(today.getDate() - i);
+        const key = day.toISOString().slice(0, 10);
+        transactions.filter(t => t.date === key).forEach(t => running += t.type === 'income' ? t.amount : -t.amount);
+        if (i % 5 === 0) { labels.push(day.getDate()); data.push(running); }
+      }
+      charts.cashflow && charts.cashflow.destroy();
+      charts.cashflow = new Chart(document.getElementById('cashflowChart'), {
+        type: 'line',
+        data: { labels, datasets: [{ data, borderColor: '#3b82f6', backgroundColor: '#3b82f622', fill: true, tension: 0.4, pointRadius: 0, borderWidth: 2 }] },
+        options: { maintainAspectRatio: false, plugins: { legend: { display: false } },
+          scales: { x: { grid: { display: false }, ticks: { color: '#6b7280' } },
+                    y: { grid: { color: '#1f2937' }, ticks: { color: '#6b7280', callback: v => fmtK(v) } } } }
+      });
+    }
+
+    function renderPieChart() {
+      const spent = spentByCategory(), keys = Object.keys(spent), legend = document.getElementById('pie-legend');
+      charts.pie && charts.pie.destroy();
+      if (!keys.length) { legend.innerHTML = `<p class="text-gray-500 text-center">No expenses this month.</p>`; return; }
+      const total = keys.reduce((s, k) => s + spent[k], 0);
+      charts.pie = new Chart(document.getElementById('pieChart'), {
+        type: 'doughnut',
+        data: { labels: keys.map(k => cat(k).label), datasets: [{ data: keys.map(k => spent[k]), backgroundColor: keys.map(k => cat(k).color), borderWidth: 0 }] },
+        options: { plugins: { legend: { display: false } }, cutout: '62%' }
+      });
+      legend.innerHTML = keys.map(k => `<div class="flex justify-between items-center text-sm">
+        <span class="flex items-center gap-2"><span class="w-3 h-3 rounded-full inline-block" style="background:${cat(k).color}"></span>${cat(k).label}</span>
+        <span class="text-gray-400">${fmt(spent[k])} · ${Math.round(spent[k] / total * 100)}%</span></div>`).join('');
+    }
+
+    function monthsBack(n) {
+      const now = new Date(), out = [];
+      for (let i = n - 1; i >= 0; i--) out.push(new Date(now.getFullYear(), now.getMonth() - i, 1));
+      return out;
+    }
+
+    // Monthly Spending — Spent (blue) vs total Budget (light)
+    function renderBarChart() {
+      const totalBudget = Object.values(budgets).reduce((a, b) => a + b, 0);
+      const refs = monthsBack(analyticsRange);
+      const labels = refs.map(r => r.toLocaleDateString('en-IN', { month: 'short' }));
+      const spent = refs.map(r => monthTotals(r).expenses);
+      charts.bar && charts.bar.destroy();
+      charts.bar = new Chart(document.getElementById('barChart'), {
+        type: 'bar',
+        data: { labels, datasets: [
+          { label: 'Spent',  data: spent, backgroundColor: '#3b82f6', borderRadius: 4 },
+          { label: 'Budget', data: refs.map(() => totalBudget), backgroundColor: '#cbd5e1', borderRadius: 4 } ] },
+        options: { maintainAspectRatio: false, plugins: { legend: { labels: { color: '#9ca3af' } } },
+          scales: { x: { grid: { display: false }, ticks: { color: '#6b7280' } },
+                    y: { grid: { color: '#1f2937' }, ticks: { color: '#6b7280', callback: v => fmtK(v) } } } }
+      });
+    }
+
+    // Spending Trend — total spend per month with the latest point highlighted
+    function renderTrendChart() {
+      const refs = monthsBack(analyticsRange);
+      const labels = refs.map(r => r.toLocaleDateString('en-IN', { month: 'short' }));
+      const data = refs.map(r => monthTotals(r).expenses);
+      const last = data.length - 1;
+      charts.trend && charts.trend.destroy();
+      charts.trend = new Chart(document.getElementById('trendChart'), {
+        type: 'line',
+        data: { labels, datasets: [{ data, borderColor: '#3b82f6', backgroundColor: '#3b82f622', fill: true, tension: 0.4, borderWidth: 3,
+          pointRadius: ctx => ctx.dataIndex === last ? 6 : 0, pointBackgroundColor: '#3b82f6', pointBorderColor: '#fff', pointBorderWidth: 2 }] },
+        options: { maintainAspectRatio: false, plugins: { legend: { display: false },
+            tooltip: { callbacks: { title: items => items[0].dataIndex === last ? 'Current' : items[0].label } } },
+          scales: { x: { grid: { display: false }, ticks: { color: '#6b7280' } },
+                    y: { grid: { color: '#1f2937' }, ticks: { color: '#6b7280', callback: v => fmtK(v) } } } }
+      });
+    }
+
+    // Insight stat cards (2×2)
+    function renderInsightCards() {
+      const spent = spentByCategory();
+      const totalExp = Object.values(spent).reduce((a, b) => a + b, 0);
+
+      let topCat = null, topAmt = 0;
+      Object.keys(spent).forEach(k => { if (spent[k] > topAmt) { topAmt = spent[k]; topCat = k; } });
+      const topPct = totalExp ? Math.round(topAmt / totalExp * 100) : 0;
+
+      let saveCat = null, saveDiff = -Infinity;
+      Object.keys(budgets).forEach(k => { const diff = budgets[k] - (spent[k] || 0); if (diff > saveDiff) { saveDiff = diff; saveCat = k; } });
+
+      const now = new Date();
+      const lastExp = monthTotals(new Date(now.getFullYear(), now.getMonth() - 1, 1)).expenses;
+      const mom = lastExp ? Math.round((totalExp - lastExp) / lastExp * 100) : 0;
+      const avgDaily = totalExp / now.getDate();
+
+      const cards = [
+        { accent: true, icon: topCat ? cat(topCat).icon : '📊', big: topPct + '%',
+          text: topCat ? `of spending goes to ${cat(topCat).label}` : 'No spending yet' },
+        { icon: '📈' , big: (mom >= 0 ? '+' : '') + mom + '%', color: mom >= 0 ? 'text-orange-400' : 'text-green-400',
+          text: `spending vs last month` },
+        { icon: '🌱', text: `Top saving category:`, strong: saveCat ? cat(saveCat).label : '—' },
+        { icon: '📅', big: fmt(avgDaily), text: 'Avg. spend per day' },
+      ];
+      document.getElementById('insight-cards').innerHTML = cards.map(c => `
+        <div class="card rounded-2xl p-4 ${c.accent ? 'bg-blue-500/10 border-blue-500/40' : ''}">
+          <div class="text-2xl mb-2">${c.icon}</div>
+          ${c.big ? `<p class="text-2xl font-bold ${c.color || ''}">${c.big}</p>` : ''}
+          ${c.strong ? `<p class="text-lg font-semibold text-blue-400">${c.strong}</p>` : ''}
+          <p class="text-sm text-gray-400 mt-1">${c.text}</p>
+        </div>`).join('');
+    }
+
+    function setRange(r) {
+      analyticsRange = r;
+      document.getElementById('range-6').className  = `px-3 py-1 rounded-lg ${r === 6  ? 'bg-blue-500 text-white' : ''}`;
+      document.getElementById('range-12').className = `px-3 py-1 rounded-lg ${r === 12 ? 'bg-blue-500 text-white' : ''}`;
+      renderBarChart(); renderTrendChart();
+    }
+
+    function renderChartsForPage(n) {
+      if (n === 0) renderCashflowChart();
+      if (n === 3) { renderPieChart(); renderBarChart(); renderTrendChart(); renderInsightCards(); }
+      if (n === 6) renderReport();
+      if (n === 7) renderProfile();
+    }
+
+    /* ---------- Render all (DOM) ---------- */
+    function renderAll() {
+      renderHeader();
+      renderAccounts();
+      renderRecentTable();
+      renderBudgetRings();
+      renderFilters();
+      renderTransactionsTable();
+      renderBudgets();
+      renderGoals();
+      renderRecurring();
+      renderNotifications();
+      renderChartsForPage(currentPage);
+    }
+
+    /* ---------- Recurring manager (Settings) ---------- */
+    function renderRecurring() {
+      const wrap = document.getElementById('recurring-list');
+      if (!wrap) return;
+      if (!recurring || !recurring.length) { wrap.innerHTML = `<p class="text-sm text-gray-500">No recurring transactions yet.</p>`; return; }
+      wrap.innerHTML = recurring.map(r => {
+        const c = cat(r.category), acc = accountById(r.account);
+        return `<div class="flex items-center justify-between bg-gray-800 rounded-xl px-4 py-3">
+          <div class="min-w-0">
+            <p class="truncate">${r.note || c.label} <span class="text-xs ${r.type === 'income' ? 'text-green-400' : 'text-orange-400'}">${r.type === 'income' ? '+' : '-'}${fmt(r.amount)}</span></p>
+            <p class="text-xs text-gray-500">${c.icon} ${c.label} · ${acc.icon} ${acc.name} · ${({ daily: 'daily', weekly: 'weekly', monthly: 'monthly' })[r.frequency]} · next ${dateShort(r.nextDate)}</p>
+          </div>
+          <div class="flex items-center gap-2 shrink-0">
+            <button onclick="toggleRecurring(${r.id})" class="text-xs px-2 py-1 rounded-lg ${r.active ? 'bg-blue-500/20 text-blue-300' : 'bg-gray-700 text-gray-400'}">${r.active ? 'Active' : 'Paused'}</button>
+            <button onclick="deleteRecurring(${r.id})" class="text-gray-500 hover:text-red-400">🗑</button>
+          </div>
+        </div>`;
+      }).join('');
+    }
+    function toggleRecurring(id) {
+      const r = recurring.find(x => x.id === id); if (!r) return;
+      r.active = !r.active; saveData(); renderRecurring(); toast(r.active ? 'Resumed' : 'Paused');
+    }
+    function deleteRecurring(id) {
+      if (!confirm('Delete this recurring rule? Already-posted transactions stay.')) return;
+      recurring = recurring.filter(x => x.id !== id);
+      saveData(); renderRecurring(); toast('Recurring deleted');
+    }
+
+    /* ---------- Reports ---------- */
+    function setReportMonth(val) {
+      if (!val) return;
+      reportMonth = new Date(+val.slice(0, 4), +val.slice(5, 7) - 1, 1);
+      renderReport();
+    }
+    function renderReport() {
+      const ref = reportMonth;
+      const { income, expenses } = monthTotals(ref);
+      const net = income - expenses;
+      const savingsRate = income ? Math.round(net / income * 100) : 0;
+      const spent = spentByCategory(ref);
+      const monthLabel = ref.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
+
+      const catRows = Object.keys(spent).sort((a, b) => spent[b] - spent[a]).map(k => {
+        const pct = expenses ? Math.round(spent[k] / expenses * 100) : 0;
+        return `<tr class="border-t border-gray-800"><td class="py-2">${cat(k).icon} ${cat(k).label}</td>
+          <td class="py-2 text-right">${fmt(spent[k])}</td><td class="py-2 text-right text-gray-500">${pct}%</td></tr>`;
+      }).join('') || `<tr><td class="py-2 text-gray-500" colspan="3">No expenses this month.</td></tr>`;
+
+      const budgetRows = Object.keys(budgets).map(k => {
+        const s = spent[k] || 0, over = s > budgets[k];
+        return `<tr class="border-t border-gray-800"><td class="py-2">${cat(k).label}</td>
+          <td class="py-2 text-right">${fmt(s)}</td><td class="py-2 text-right text-gray-500">${fmt(budgets[k])}</td>
+          <td class="py-2 text-right ${over ? 'text-red-400' : 'text-green-400'}">${over ? 'Over' : 'OK'}</td></tr>`;
+      }).join('');
+
+      const acctRows = (accounts || []).map(a =>
+        `<tr class="border-t border-gray-800"><td class="py-2">${a.icon} ${a.name}</td><td class="py-2 text-right">${fmt(accountBalance(a.id))}</td></tr>`).join('');
+
+      document.getElementById('report-body').innerHTML = `
+        <div class="card rounded-2xl p-6 print-area">
+          <div class="flex items-center justify-between mb-6">
+            <div>
+              <p class="text-xl font-bold"><span class="text-sky-400">Flow</span><span class="text-slate-100">Wallet</span> Statement</p>
+              <p class="text-gray-400 text-sm">${monthLabel}</p>
+            </div>
+            <div class="text-right text-sm text-gray-500">Generated ${new Date().toLocaleDateString('en-IN')}</div>
+          </div>
+
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            <div><p class="text-gray-400 text-xs">Income</p><p class="text-lg font-bold text-green-400">${fmt(income)}</p></div>
+            <div><p class="text-gray-400 text-xs">Expenses</p><p class="text-lg font-bold text-orange-400">${fmt(expenses)}</p></div>
+            <div><p class="text-gray-400 text-xs">Net</p><p class="text-lg font-bold ${net >= 0 ? 'text-green-400' : 'text-red-400'}">${net >= 0 ? '+' : '-'}${fmt(Math.abs(net))}</p></div>
+            <div><p class="text-gray-400 text-xs">Savings rate</p><p class="text-lg font-bold">${savingsRate}%</p></div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <h4 class="font-semibold mb-2">Spending by Category</h4>
+              <table class="w-full text-sm"><tbody>${catRows}</tbody></table>
+            </div>
+            <div>
+              <h4 class="font-semibold mb-2">Budget Performance</h4>
+              <table class="w-full text-sm">
+                <thead class="text-gray-500 text-xs"><tr><th class="text-left font-medium">Category</th><th class="text-right font-medium">Spent</th><th class="text-right font-medium">Budget</th><th class="text-right font-medium">Status</th></tr></thead>
+                <tbody>${budgetRows}</tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="mt-6 md:w-1/2">
+            <h4 class="font-semibold mb-2">Account Balances</h4>
+            <table class="w-full text-sm"><tbody>${acctRows}</tbody></table>
+          </div>
+        </div>`;
+    }
+
+    /* ---------- Transaction modal ---------- */
+    function populateCategorySelect() {
+      const sel = document.getElementById('category');
+      sel.innerHTML = '';
+      Object.keys(CATEGORIES).forEach(key => {
+        const c = CATEGORIES[key];
+        if (currentType === 'income' && c.kind === 'expense') return;
+        if (currentType === 'expense' && c.kind === 'income') return;
+        const opt = document.createElement('option');
+        opt.value = key; opt.textContent = `${c.icon}  ${c.label}`;
+        sel.appendChild(opt);
+      });
+    }
+    function setType(type) {
+      currentType = type;
+      document.getElementById('btn-income').className = `flex-1 py-3 rounded-xl ${type === 'income' ? 'bg-green-500 ring-2 ring-white' : 'bg-gray-800'}`;
+      document.getElementById('btn-expense').className = `flex-1 py-3 rounded-xl ${type === 'expense' ? 'bg-orange-500 ring-2 ring-white' : 'bg-gray-800'}`;
+      populateCategorySelect();
+    }
+    function fillAccountSelect(sel, selected) {
+      sel.innerHTML = (accounts || []).map(a => `<option value="${a.id}">${a.icon} ${a.name}</option>`).join('');
+      if (selected) sel.value = selected;
+    }
+    function showAddModal() {
+      editingId = null;
+      document.getElementById('modal-title').textContent = 'New Transaction';
+      document.getElementById('amount').value = '';
+      document.getElementById('note').value = '';
+      document.getElementById('date').value = new Date().toISOString().slice(0, 10);
+      document.getElementById('repeat').value = 'none';
+      document.getElementById('repeat').disabled = false;
+      fillAccountSelect(document.getElementById('account'), 'bank');
+      setType('expense');
+      document.getElementById('add-modal').classList.remove('hidden');
+    }
+    function editTransaction(id) {
+      const t = transactions.find(x => x.id === id); if (!t) return;
+      editingId = id;
+      document.getElementById('modal-title').textContent = 'Edit Transaction';
+      setType(t.type);
+      document.getElementById('amount').value = t.amount;
+      document.getElementById('category').value = t.category;
+      document.getElementById('note').value = t.note || '';
+      document.getElementById('date').value = t.date;
+      fillAccountSelect(document.getElementById('account'), t.account || 'bank');
+      document.getElementById('repeat').value = 'none';
+      document.getElementById('repeat').disabled = true; // repeat only applies to new entries
+      document.getElementById('add-modal').classList.remove('hidden');
+    }
+    function hideAddModal() { document.getElementById('add-modal').classList.add('hidden'); }
+    function saveTransaction() {
+      const amount = parseFloat(document.getElementById('amount').value);
+      if (!amount || amount <= 0) { toast('Enter a valid amount'); return; }
+      const payload = {
+        amount, category: document.getElementById('category').value, type: currentType,
+        note: document.getElementById('note').value.trim(),
+        account: document.getElementById('account').value,
+        date: document.getElementById('date').value || new Date().toISOString().slice(0, 10),
+      };
+      if (editingId) {
+        Object.assign(transactions.find(x => x.id === editingId), payload);
+        toast('Transaction updated');
+      } else {
+        transactions.unshift({ id: Date.now(), ...payload });
+        const repeat = document.getElementById('repeat').value;
+        if (repeat !== 'none') {
+          recurring.push({ id: Date.now() + 1, type: currentType, amount, category: payload.category,
+            note: payload.note, account: payload.account, frequency: repeat,
+            nextDate: advanceDate(parseDate(payload.date), repeat).toISOString().slice(0, 10), active: true });
+          toast('Added + recurring scheduled');
+        } else toast('Transaction added');
+      }
+      saveData(); renderAll(); hideAddModal();
+    }
+    function deleteTransaction(id) {
+      if (!confirm('Delete this transaction?')) return;
+      transactions = transactions.filter(x => x.id !== id);
+      saveData(); renderAll(); toast('Deleted');
+    }
+
+    /* ---------- Accounts & transfers ---------- */
+    function renderAccounts() {
+      const wrap = document.getElementById('accounts-strip');
+      if (!wrap) return;
+      const cards = (accounts || []).map(a => `
+        <div class="card rounded-2xl p-4">
+          <div class="flex items-center gap-2 text-sm text-gray-400"><span>${a.icon}</span>${a.name}</div>
+          <p class="text-xl font-bold mt-1" style="color:${a.color}">${fmt(accountBalance(a.id))}</p>
+        </div>`).join('');
+      wrap.innerHTML = cards + `
+        <button onclick="showTransferModal()" class="card rounded-2xl p-4 flex flex-col items-center justify-center text-gray-400 hover:text-white hover:border-blue-500/50">
+          <span class="text-2xl">🔄</span><span class="text-sm mt-1">Transfer</span>
+        </button>`;
+    }
+    function showTransferModal() {
+      const ids = (accounts || []).map(a => a.id);
+      fillAccountSelect(document.getElementById('transfer-from'), ids[0]);
+      fillAccountSelect(document.getElementById('transfer-to'), ids[1] || ids[0]);
+      document.getElementById('transfer-amount').value = '';
+      document.getElementById('transfer-note').value = '';
+      document.getElementById('transfer-date').value = new Date().toISOString().slice(0, 10);
+      document.getElementById('transfer-modal').classList.remove('hidden');
+    }
+    function hideTransferModal() { document.getElementById('transfer-modal').classList.add('hidden'); }
+    function saveTransfer() {
+      const amount = parseFloat(document.getElementById('transfer-amount').value);
+      const from = document.getElementById('transfer-from').value;
+      const to = document.getElementById('transfer-to').value;
+      if (!amount || amount <= 0) { toast('Enter a valid amount'); return; }
+      if (from === to) { toast('Pick two different accounts'); return; }
+      transactions.unshift({ id: Date.now(), type: 'transfer', amount, account: from, toAccount: to,
+        note: document.getElementById('transfer-note').value.trim(),
+        date: document.getElementById('transfer-date').value || new Date().toISOString().slice(0, 10) });
+      saveData(); renderAll(); hideTransferModal(); toast('Transfer complete');
+    }
+    function editBudget(key) {
+      const val = prompt(`Monthly budget for ${cat(key).label}:`, budgets[key] || 0);
+      if (val === null) return;
+      const num = parseFloat(val);
+      if (isNaN(num) || num < 0) { toast('Enter a valid number'); return; }
+      budgets[key] = num; saveData(); renderBudgets(); renderBudgetRings(); renderHeader(); toast('Budget updated');
+    }
+
+    /* ---------- Currency ---------- */
+    function populateCurrencySelect() {
+      const sel = document.getElementById('currency-select');
+      sel.innerHTML = Object.keys(CURRENCIES).map(code =>
+        `<option value="${code}">${CURRENCIES[code].symbol.trim()} ${code} — ${CURRENCIES[code].name}</option>`).join('');
+      sel.value = currency;
+    }
+    function setCurrency(code) {
+      if (!CURRENCIES[code]) return;
+      currency = code; saveData(); renderAll(); toast(`Currency set to ${CURRENCIES[code].name}`);
+    }
+
+    /* ---------- Data management ---------- */
+    function exportData() {
+      const blob = new Blob([JSON.stringify({ transactions, budgets, goals, accounts, recurring, currency }, null, 2)], { type: 'application/json' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob); a.download = 'flowwallet-backup.json'; a.click();
+      URL.revokeObjectURL(a.href);
+    }
+    function importData(e) {
+      const file = e.target.files[0]; if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const data = JSON.parse(reader.result);
+          if (data.transactions) transactions = data.transactions;
+          if (data.budgets) budgets = data.budgets;
+          if (data.goals) goals = data.goals;
+          if (data.accounts) accounts = data.accounts;
+          if (data.recurring) recurring = data.recurring;
+          if (data.currency) currency = data.currency;
+          saveData(); populateCurrencySelect(); renderAll(); toast('Data imported');
+        } catch { toast('Invalid file'); }
+      };
+      reader.readAsText(file); e.target.value = '';
+    }
+    function resetData() {
+      if (!confirm('Reset to sample data? This replaces your current data.')) return;
+      transactions = null; goals = null; accounts = null; recurring = null; budgets = { ...DEFAULT_BUDGETS };
+      seedIfEmpty(); saveData(); renderAll(); toast('Reset to sample data');
+    }
+    function clearData() {
+      if (!confirm('Clear ALL data? This cannot be undone.')) return;
+      transactions = []; goals = []; recurring = []; accounts = DEFAULT_ACCOUNTS.map(a => ({ ...a })); budgets = { ...DEFAULT_BUDGETS };
+      saveData(); renderAll(); toast('All data cleared');
+    }
+
+    /* ---------- Dropdowns & notifications ---------- */
+    function toggleDropdown(e, id) {
+      e.stopPropagation();
+      const panel = document.getElementById(id);
+      const willOpen = panel.classList.contains('hidden');
+      closeDropdowns();
+      if (willOpen) panel.classList.remove('hidden');
+    }
+    function closeDropdowns() {
+      document.querySelectorAll('.dropdown').forEach(d => d.classList.add('hidden'));
+    }
+    document.addEventListener('click', closeDropdowns);
+    document.querySelectorAll('.dropdown').forEach(d => d.addEventListener('click', e => e.stopPropagation()));
+
+    function renderNotifications() {
+      const spent = spentByCategory();
+      const items = [];
+      Object.keys(budgets).forEach(k => {
+        const over = (spent[k] || 0) - budgets[k];
+        if (over > 0) items.push({ icon: '⚠️', text: `${cat(k).label} over budget by ${fmt(over)}`, color: 'text-red-400' });
+      });
+      goals.forEach(g => {
+        if (g.saved >= g.target) items.push({ icon: '🎉', text: `Goal reached: ${g.name}`, color: 'text-green-400' });
+        else if (g.target && g.saved / g.target >= 0.8) items.push({ icon: '🔥', text: `${g.name} is ${Math.round(g.saved / g.target * 100)}% funded`, color: 'text-blue-400' });
+      });
+      const list = document.getElementById('notif-list');
+      list.innerHTML = items.length
+        ? items.map(i => `<div class="flex items-start gap-2 px-3 py-2 text-sm"><span>${i.icon}</span><span class="${i.color}">${i.text}</span></div>`).join('')
+        : `<p class="px-3 py-6 text-sm text-gray-500 text-center">All good — nothing needs attention 🎉</p>`;
+    }
+
+    /* ---------- Navigation ---------- */
+    function showPage(n) {
+      currentPage = n;
+      document.querySelectorAll('.page').forEach(p => p.classList.add('hidden'));
+      document.getElementById('page-' + n).classList.remove('hidden');
+      document.querySelectorAll('.nav-item').forEach(b => b.classList.toggle('nav-active', +b.dataset.page === n));
+      renderChartsForPage(n);
+      window.scrollTo(0, 0);
+    }
+
+    /* ---------- Toast ---------- */
+    let toastTimer;
+    function toast(msg) {
+      const el = document.getElementById('toast');
+      el.textContent = msg; el.classList.remove('hidden');
+      clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.add('hidden'), 2200);
+    }
+
+    /* ---------- Auth (local demo lock) ---------- */
+    let authMode = 'login';
+    let currentUser = JSON.parse(localStorage.getItem('fw_auth')) || null;
+
+    // Compact non-cryptographic hash (cyrb53) — enough for a local lock, not real security.
+    function hashStr(str, seed = 0) {
+      let h1 = 0xdeadbeef ^ seed, h2 = 0x41c6ce57 ^ seed;
+      for (let i = 0, ch; i < str.length; i++) {
+        ch = str.charCodeAt(i);
+        h1 = Math.imul(h1 ^ ch, 2654435761);
+        h2 = Math.imul(h2 ^ ch, 1597334677);
+      }
+      h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507); h1 ^= Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+      h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507); h2 ^= Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+      return (4294967296 * (2097151 & h2) + (h1 >>> 0)).toString(16);
+    }
+    const pwHash = (email, pw) => hashStr('fw$' + email.toLowerCase().trim() + ':' + pw);
+
+    function authError(msg) {
+      const el = document.getElementById('auth-error');
+      el.textContent = msg; el.classList.toggle('hidden', !msg);
+    }
+    function setAuthMode(mode) {
+      authMode = mode;
+      const signup = mode === 'signup';
+      document.getElementById('auth-title').textContent = signup ? 'Create your account' : 'Welcome back';
+      document.getElementById('auth-sub').textContent   = signup ? 'Start tracking your money' : 'Log in to your wallet';
+      document.getElementById('auth-submit').textContent = signup ? 'Create account' : 'Log in';
+      document.getElementById('auth-name-wrap').classList.toggle('hidden', !signup);
+      document.getElementById('auth-confirm-wrap').classList.toggle('hidden', !signup);
+      document.getElementById('auth-toggle-text').textContent = signup ? 'Already have an account?' : 'New to FlowWallet?';
+      document.getElementById('auth-toggle-btn').textContent   = signup ? 'Log in' : 'Create an account';
+      document.getElementById('auth-password').setAttribute('autocomplete', signup ? 'new-password' : 'current-password');
+      authError('');
+    }
+    function toggleAuthMode() { setAuthMode(authMode === 'login' ? 'signup' : 'login'); }
+
+    function authSubmit() {
+      const email = document.getElementById('auth-email').value.trim();
+      const pw    = document.getElementById('auth-password').value;
+      if (!/^\S+@\S+\.\S+$/.test(email)) return authError('Enter a valid email address.');
+      if (pw.length < 4) return authError('Password must be at least 4 characters.');
+
+      if (authMode === 'signup') {
+        const name = document.getElementById('auth-name').value.trim();
+        const confirm = document.getElementById('auth-confirm').value;
+        if (!name) return authError('Enter your name.');
+        if (pw !== confirm) return authError('Passwords do not match.');
+        currentUser = { name, email, hash: pwHash(email, pw), created: new Date().toISOString() };
+        localStorage.setItem('fw_auth', JSON.stringify(currentUser));
+        finishLogin();
+        toast('Account created — welcome!');
+      } else {
+        if (!currentUser) return authError('No account found. Create one first.');
+        if (email.toLowerCase() !== currentUser.email.toLowerCase() || pwHash(email, pw) !== currentUser.hash)
+          return authError('Incorrect email or password.');
+        finishLogin();
+        toast('Logged in');
+      }
+    }
+
+    function finishLogin() {
+      localStorage.setItem('fw_session', currentUser.email);
+      applyUser();
+      document.getElementById('auth-screen').classList.add('hidden');
+      document.getElementById('auth-password').value = '';
+      document.getElementById('auth-confirm') && (document.getElementById('auth-confirm').value = '');
+    }
+
+    function applyUser() {
+      if (!currentUser) return;
+      const first = currentUser.name.split(' ')[0];
+      document.getElementById('greeting').textContent = `Welcome back, ${first}`;
+      document.getElementById('avatar-initial').textContent = (currentUser.name[0] || '?').toUpperCase();
+      document.getElementById('user-name').textContent = currentUser.name;
+      document.getElementById('user-email').textContent = currentUser.email;
+    }
+
+    function logout() {
+      localStorage.removeItem('fw_session');
+      closeDropdowns();
+      authError('');
+      document.getElementById('auth-password').value = '';
+      setAuthMode('login');
+      document.getElementById('auth-email').value = currentUser ? currentUser.email : '';
+      document.getElementById('auth-screen').classList.remove('hidden');
+    }
+
+    /* ---------- Profile ---------- */
+    function renderProfile() {
+      if (!currentUser) return;
+      const initial = (currentUser.name[0] || '?').toUpperCase();
+      document.getElementById('profile-avatar').textContent = initial;
+      document.getElementById('profile-name-display').textContent = currentUser.name;
+      document.getElementById('profile-email-display').textContent = currentUser.email;
+      document.getElementById('profile-since').textContent = currentUser.created
+        ? 'Member since ' + new Date(currentUser.created).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })
+        : '';
+      document.getElementById('profile-name').value = currentUser.name;
+      document.getElementById('profile-email').value = currentUser.email;
+      document.getElementById('stat-tx').textContent = transactions.length;
+      document.getElementById('stat-balance').textContent = fmt(totalBalance());
+      document.getElementById('stat-accounts').textContent = (accounts || []).length;
+      document.getElementById('stat-goals').textContent = (goals || []).length;
+      // reset password fields
+      ['pw-current', 'pw-new', 'pw-confirm'].forEach(id => document.getElementById(id).value = '');
+      document.getElementById('pw-error').classList.add('hidden');
+    }
+    function saveProfile() {
+      const name = document.getElementById('profile-name').value.trim();
+      if (!name) { toast('Enter your name'); return; }
+      currentUser.name = name;
+      localStorage.setItem('fw_auth', JSON.stringify(currentUser));
+      applyUser(); renderProfile(); toast('Profile updated');
+    }
+    function changePassword() {
+      const err = document.getElementById('pw-error');
+      const show = (m) => { err.textContent = m; err.classList.remove('hidden'); };
+      const cur = document.getElementById('pw-current').value;
+      const nw = document.getElementById('pw-new').value;
+      const cf = document.getElementById('pw-confirm').value;
+      if (pwHash(currentUser.email, cur) !== currentUser.hash) return show('Current password is incorrect.');
+      if (nw.length < 4) return show('New password must be at least 4 characters.');
+      if (nw !== cf) return show('New passwords do not match.');
+      currentUser.hash = pwHash(currentUser.email, nw);
+      localStorage.setItem('fw_auth', JSON.stringify(currentUser));
+      err.classList.add('hidden');
+      ['pw-current', 'pw-new', 'pw-confirm'].forEach(id => document.getElementById(id).value = '');
+      toast('Password updated');
+    }
+
+    function authInit() {
+      // Enter key submits from any auth field
+      ['auth-name', 'auth-email', 'auth-password', 'auth-confirm'].forEach(id =>
+        document.getElementById(id).addEventListener('keydown', e => { if (e.key === 'Enter') authSubmit(); }));
+
+      const session = localStorage.getItem('fw_session');
+      if (currentUser && session && session.toLowerCase() === currentUser.email.toLowerCase()) {
+        applyUser();
+        document.getElementById('auth-screen').classList.add('hidden');
+      } else {
+        setAuthMode(currentUser ? 'login' : 'signup'); // returning users → log in; new → sign up
+        if (currentUser) document.getElementById('auth-email').value = currentUser.email;
+      }
+    }
+
+    /* ---------- Init ---------- */
+    window.onload = () => {
+      authInit();
+      seedIfEmpty();
+      const posted = processRecurring();
+      saveData();
+      populateCurrencySelect();
+      document.getElementById('budget-month').value = monthStr(budgetMonth);
+      document.getElementById('report-month').value = monthStr(reportMonth);
+      renderAll();
+      if (posted) setTimeout(() => toast(`${posted} recurring transaction${posted > 1 ? 's' : ''} posted`), 400);
+
+      // PWA: register the service worker (works when served over http/https)
+      if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+        navigator.serviceWorker.register('sw.js').catch(() => {});
+      }
+    };
+  </script>
+</body>
+</html>

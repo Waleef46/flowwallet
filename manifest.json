@@ -1,0 +1,19 @@
+{
+  "name": "FlowWallet — Pay. Send. Flow.",
+  "short_name": "FlowWallet",
+  "description": "Personal finance wallet: track spending, budgets, goals and accounts.",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#030712",
+  "theme_color": "#3b82f6",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
