@@ -409,7 +409,7 @@
             <div id="recurring-list" class="space-y-2"></div>
           </div>
 
-          <p class="text-center text-xs text-gray-600 mt-2">FlowWallet <span id="app-version"></span></p>
+          <button onclick="showChangelog()" class="block mx-auto text-center text-xs text-gray-600 hover:text-blue-400 mt-2">FlowWallet <span id="app-version"></span> · What's new</button>
         </section>
 
         <!-- ============ REPORTS ============ -->
@@ -581,12 +581,38 @@
     </div>
   </div>
 
+  <!-- CHANGELOG MODAL -->
+  <div id="changelog-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-40 p-4">
+    <div class="bg-gray-900 border border-gray-800 w-full max-w-md rounded-3xl p-6 sheet-enter max-h-[85vh] overflow-y-auto">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-2xl font-bold">What's new</h2>
+        <button onclick="hideChangelog()" class="text-gray-400 hover:text-white text-2xl leading-none">×</button>
+      </div>
+      <div id="changelog-body" class="space-y-5"></div>
+      <button onclick="hideChangelog()" class="w-full mt-5 bg-blue-500 hover:bg-blue-400 py-3 rounded-2xl font-semibold">Close</button>
+    </div>
+  </div>
+
   <!-- TOAST -->
   <div id="toast" class="hidden fixed bottom-8 left-1/2 -translate-x-1/2 bg-blue-500 text-white px-5 py-3 rounded-full shadow-lg z-50 text-sm font-medium"></div>
 
   <script>
     /* ---------- Config ---------- */
     const APP_VERSION = '1.1.0';
+    const CHANGELOG = [
+      { v: '1.1.0', date: 'Jul 2026', notes: [
+        'Custom categories — add/edit/delete your own (Loans, Rent, Investments included)',
+        'Auto-updating app — no more hard refresh; updates apply on reopen',
+        'In-app changelog & version label',
+      ] },
+      { v: '1.0.0', date: 'Jul 2026', notes: [
+        'Dashboard, accounts & transfers, recurring transactions',
+        'Transactions with search, date filters & CSV export',
+        'Budgets with monthly picker & circular progress',
+        'Analytics, savings goals, monthly reports (print/PDF)',
+        'Local login + profile, multi-currency, installable PWA',
+      ] },
+    ];
     const DEFAULT_CATEGORIES = {
       Food:          { label: 'Food & Groceries', icon: '🍔', color: '#f59e0b', kind: 'expense' },
       Transport:     { label: 'Transport',        icon: '🚌', color: '#14b8a6', kind: 'expense' },
@@ -1319,6 +1345,19 @@
       delete categories[key];
       saveData(); renderAll(); toast('Category deleted');
     }
+
+    /* ---------- Changelog ---------- */
+    function showChangelog() {
+      document.getElementById('changelog-body').innerHTML = CHANGELOG.map(r => `
+        <div>
+          <p class="font-semibold">v${r.v} <span class="text-xs text-gray-500 font-normal">· ${r.date}</span></p>
+          <ul class="list-disc list-inside text-sm text-gray-400 mt-1 space-y-1">
+            ${r.notes.map(n => `<li>${n}</li>`).join('')}
+          </ul>
+        </div>`).join('');
+      document.getElementById('changelog-modal').classList.remove('hidden');
+    }
+    function hideChangelog() { document.getElementById('changelog-modal').classList.add('hidden'); }
 
     /* ---------- Reports ---------- */
     function setReportMonth(val) {
