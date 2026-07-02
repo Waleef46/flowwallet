@@ -1,6 +1,16 @@
-# FlowWallet — static site, no build step. Publish the repo root as-is.
+# FlowWallet — static site + serverless API (Netlify Functions + Neon).
 [build]
   publish = "."
+  functions = "netlify/functions"
+
+[functions]
+  node_bundler = "esbuild"
+
+# Friendly API paths: /api/login → /.netlify/functions/login
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/:splat"
+  status = 200
 
 # Never cache the service worker, so app updates roll out immediately.
 [[headers]]
