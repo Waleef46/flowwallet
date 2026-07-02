@@ -78,7 +78,7 @@
           <button onclick="toggleAuthMode()" id="auth-toggle-btn" class="text-blue-400 font-medium ml-1">Create an account</button>
         </p>
       </div>
-      <p class="text-center text-xs text-gray-600 mt-4">Local demo login — your account &amp; data stay in this browser.</p>
+      <p class="text-center text-xs text-gray-600 mt-4">Your account &amp; data sync securely across your devices.</p>
     </div>
   </div>
 
@@ -598,8 +598,13 @@
 
   <script>
     /* ---------- Config ---------- */
-    const APP_VERSION = '1.1.0';
+    const APP_VERSION = '1.2.0';
     const CHANGELOG = [
+      { v: '1.2.0', date: 'Jul 2026', notes: [
+        'Cloud accounts — real login that syncs your data across phone & web',
+        'Automatic background sync with offline support',
+        'Change your name & password from Profile',
+      ] },
       { v: '1.1.0', date: 'Jul 2026', notes: [
         'Custom categories — add/edit/delete your own (Loans, Rent, Investments included)',
         'Auto-updating app — no more hard refresh; updates apply on reopen',
@@ -746,7 +751,7 @@
     }
 
     /* ---------- Persistence ---------- */
-    function saveData() {
+    function saveLocal() {
       localStorage.setItem('fw_transactions', JSON.stringify(transactions));
       localStorage.setItem('fw_budgets', JSON.stringify(budgets));
       localStorage.setItem('fw_goals', JSON.stringify(goals));
@@ -755,6 +760,60 @@
       localStorage.setItem('fw_categories', JSON.stringify(categories));
       localStorage.setItem('fw_currency', currency);
     }
+    // Persist locally (offline cache) and schedule a cloud sync.
+    function saveData() { saveLocal(); scheduleSync(); }
+
+    /* ---------- Cloud sync (Netlify Functions + Neon) ---------- */
+    let syncTimer = null, syncDirty = false;
+    async function api(path, { method = 'GET', body, auth = true } = {}) {
+      const headers = { 'Content-Type': 'application/json' };
+      if (auth) { const t = localStorage.getItem('fw_token'); if (t) headers.Authorization = 'Bearer ' + t; }
+      const res = await fetch('/api' + path, { method, headers, body: body ? JSON.stringify(body) : undefined });
+      let data = {}; try { data = await res.json(); } catch {}
+      if (res.status === 401 && auth) { forceLogout(); throw new Error('Session expired'); }
+      return { ok: res.ok, status: res.status, data };
+    }
+    const currentBlob = () => ({ transactions, budgets, goals, accounts, recurring, categories, currency });
+    function applyBlob(d) {
+      if (!d || typeof d !== 'object') return;
+      if (d.transactions) transactions = d.transactions;
+      if (d.budgets) budgets = d.budgets;
+      if (d.goals) goals = d.goals;
+      if (d.accounts) accounts = d.accounts;
+      if (d.recurring) recurring = d.recurring;
+      if (d.categories) categories = d.categories;
+      if (d.currency) currency = d.currency;
+      saveLocal();
+    }
+    function scheduleSync() {
+      if (!localStorage.getItem('fw_token')) return; // only sync when logged into the cloud
+      syncDirty = true;
+      clearTimeout(syncTimer);
+      syncTimer = setTimeout(pushCloud, 1500);
+    }
+    async function pushCloud() {
+      if (!localStorage.getItem('fw_token')) return;
+      try {
+        const r = await api('/data', { method: 'PUT', body: { data: currentBlob() } });
+        if (r.ok) syncDirty = false;
+      } catch (e) { /* offline — will retry on next change / reconnect */ }
+    }
+    async function pullCloud() {
+      if (!localStorage.getItem('fw_token')) return;
+      try {
+        const r = await api('/data', { method: 'GET' });
+        if (r.ok && r.data.data && Object.keys(r.data.data).length) {
+          applyBlob(r.data.data); renderAll();
+        } else if (r.ok) {
+          await pushCloud(); // server empty → seed it from local
+        }
+      } catch (e) { /* offline — keep local copy */ }
+    }
+    window.addEventListener('online', () => { if (syncDirty) pushCloud(); });
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden || !localStorage.getItem('fw_token')) return;
+      syncDirty ? pushCloud() : pullCloud();
+    });
 
     /* ---------- Helpers ---------- */
     const cur = () => CURRENCIES[currency] || CURRENCIES.INR;
@@ -1649,21 +1708,7 @@
 
     /* ---------- Auth (local demo lock) ---------- */
     let authMode = 'login';
-    let currentUser = JSON.parse(localStorage.getItem('fw_auth')) || null;
-
-    // Compact non-cryptographic hash (cyrb53) — enough for a local lock, not real security.
-    function hashStr(str, seed = 0) {
-      let h1 = 0xdeadbeef ^ seed, h2 = 0x41c6ce57 ^ seed;
-      for (let i = 0, ch; i < str.length; i++) {
-        ch = str.charCodeAt(i);
-        h1 = Math.imul(h1 ^ ch, 2654435761);
-        h2 = Math.imul(h2 ^ ch, 1597334677);
-      }
-      h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507); h1 ^= Math.imul(h2 ^ (h2 >>> 13), 3266489909);
-      h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507); h2 ^= Math.imul(h1 ^ (h1 >>> 13), 3266489909);
-      return (4294967296 * (2097151 & h2) + (h1 >>> 0)).toString(16);
-    }
-    const pwHash = (email, pw) => hashStr('fw$' + email.toLowerCase().trim() + ':' + pw);
+    let currentUser = JSON.parse(localStorage.getItem('fw_user')) || null;
 
     function authError(msg) {
       const el = document.getElementById('auth-error');
@@ -1684,36 +1729,56 @@
     }
     function toggleAuthMode() { setAuthMode(authMode === 'login' ? 'signup' : 'login'); }
 
-    function authSubmit() {
+    async function authSubmit() {
       const email = document.getElementById('auth-email').value.trim();
       const pw    = document.getElementById('auth-password').value;
       if (!/^\S+@\S+\.\S+$/.test(email)) return authError('Enter a valid email address.');
-      if (pw.length < 4) return authError('Password must be at least 4 characters.');
-
-      if (authMode === 'signup') {
-        const name = document.getElementById('auth-name').value.trim();
-        const confirm = document.getElementById('auth-confirm').value;
-        if (!name) return authError('Enter your name.');
-        if (pw !== confirm) return authError('Passwords do not match.');
-        currentUser = { name, email, hash: pwHash(email, pw), created: new Date().toISOString() };
-        localStorage.setItem('fw_auth', JSON.stringify(currentUser));
-        finishLogin();
-        toast('Account created — welcome!');
-      } else {
-        if (!currentUser) return authError('No account found. Create one first.');
-        if (email.toLowerCase() !== currentUser.email.toLowerCase() || pwHash(email, pw) !== currentUser.hash)
-          return authError('Incorrect email or password.');
-        finishLogin();
-        toast('Logged in');
+      if (!pw) return authError('Enter your password.');
+      const btn = document.getElementById('auth-submit');
+      btn.disabled = true; btn.textContent = 'Please wait…';
+      try {
+        if (authMode === 'signup') {
+          const name = document.getElementById('auth-name').value.trim();
+          const confirm = document.getElementById('auth-confirm').value;
+          if (!name) return authError('Enter your name.');
+          if (pw.length < 6) return authError('Password must be at least 6 characters.');
+          if (pw !== confirm) return authError('Passwords do not match.');
+          const r = await api('/signup', { method: 'POST', auth: false, body: { name, email, password: pw } });
+          if (!r.ok) return authError(r.data.error || 'Sign up failed.');
+          setSession(r.data);
+          await pushCloud();       // migrate current local data up to the new account
+          finishAuth(); toast('Account created — welcome!');
+        } else {
+          const r = await api('/login', { method: 'POST', auth: false, body: { email, password: pw } });
+          if (!r.ok) return authError(r.data.error || 'Login failed.');
+          setSession(r.data);
+          await pullCloud();       // load this account's data from the cloud
+          finishAuth(); toast('Logged in');
+        }
+      } catch (e) {
+        authError('Network error — check your connection and try again.');
+      } finally {
+        btn.disabled = false; setAuthMode(authMode);
       }
     }
 
-    function finishLogin() {
-      localStorage.setItem('fw_session', currentUser.email);
+    function setSession(d) {
+      localStorage.setItem('fw_token', d.token);
+      currentUser = { name: d.name, email: d.email, created: d.created };
+      localStorage.setItem('fw_user', JSON.stringify(currentUser));
+      localStorage.setItem('fw_last_email', d.email);
       applyUser();
+    }
+    function finishAuth() {
       document.getElementById('auth-screen').classList.add('hidden');
       document.getElementById('auth-password').value = '';
-      document.getElementById('auth-confirm') && (document.getElementById('auth-confirm').value = '');
+      const cf = document.getElementById('auth-confirm'); if (cf) cf.value = '';
+    }
+    function forceLogout() {
+      localStorage.removeItem('fw_token');
+      setAuthMode('login');
+      document.getElementById('auth-email').value = localStorage.getItem('fw_last_email') || '';
+      document.getElementById('auth-screen').classList.remove('hidden');
     }
 
     function applyUser() {
@@ -1726,12 +1791,13 @@
     }
 
     function logout() {
-      localStorage.removeItem('fw_session');
+      localStorage.removeItem('fw_token');
+      localStorage.removeItem('fw_user');
       closeDropdowns();
       authError('');
       document.getElementById('auth-password').value = '';
       setAuthMode('login');
-      document.getElementById('auth-email').value = currentUser ? currentUser.email : '';
+      document.getElementById('auth-email').value = localStorage.getItem('fw_last_email') || '';
       document.getElementById('auth-screen').classList.remove('hidden');
     }
 
@@ -1755,54 +1821,66 @@
       ['pw-current', 'pw-new', 'pw-confirm'].forEach(id => document.getElementById(id).value = '');
       document.getElementById('pw-error').classList.add('hidden');
     }
-    function saveProfile() {
+    async function saveProfile() {
       const name = document.getElementById('profile-name').value.trim();
       if (!name) { toast('Enter your name'); return; }
-      currentUser.name = name;
-      localStorage.setItem('fw_auth', JSON.stringify(currentUser));
-      applyUser(); renderProfile(); toast('Profile updated');
+      try {
+        const r = await api('/profile', { method: 'PUT', body: { name } });
+        if (!r.ok) { toast(r.data.error || 'Update failed'); return; }
+        currentUser.name = name;
+        if (r.data.token) localStorage.setItem('fw_token', r.data.token);
+        localStorage.setItem('fw_user', JSON.stringify(currentUser));
+        applyUser(); renderProfile(); toast('Profile updated');
+      } catch (e) { toast('Network error'); }
     }
-    function changePassword() {
+    async function changePassword() {
       const err = document.getElementById('pw-error');
       const show = (m) => { err.textContent = m; err.classList.remove('hidden'); };
       const cur = document.getElementById('pw-current').value;
       const nw = document.getElementById('pw-new').value;
       const cf = document.getElementById('pw-confirm').value;
-      if (pwHash(currentUser.email, cur) !== currentUser.hash) return show('Current password is incorrect.');
-      if (nw.length < 4) return show('New password must be at least 4 characters.');
+      if (nw.length < 6) return show('New password must be at least 6 characters.');
       if (nw !== cf) return show('New passwords do not match.');
-      currentUser.hash = pwHash(currentUser.email, nw);
-      localStorage.setItem('fw_auth', JSON.stringify(currentUser));
-      err.classList.add('hidden');
-      ['pw-current', 'pw-new', 'pw-confirm'].forEach(id => document.getElementById(id).value = '');
-      toast('Password updated');
+      try {
+        const r = await api('/profile', { method: 'PUT', body: { currentPassword: cur, newPassword: nw } });
+        if (!r.ok) return show(r.data.error || 'Could not update password.');
+        err.classList.add('hidden');
+        ['pw-current', 'pw-new', 'pw-confirm'].forEach(id => document.getElementById(id).value = '');
+        toast('Password updated');
+      } catch (e) { show('Network error.'); }
     }
 
-    function authInit() {
+    async function authInit() {
       // Enter key submits from any auth field
       ['auth-name', 'auth-email', 'auth-password', 'auth-confirm'].forEach(id =>
         document.getElementById(id).addEventListener('keydown', e => { if (e.key === 'Enter') authSubmit(); }));
 
-      const session = localStorage.getItem('fw_session');
-      if (currentUser && session && session.toLowerCase() === currentUser.email.toLowerCase()) {
+      const token = localStorage.getItem('fw_token');
+      if (token && currentUser) {
         applyUser();
         document.getElementById('auth-screen').classList.add('hidden');
+        await pullCloud(); // refresh from the cloud (falls back to local cache offline)
       } else {
-        setAuthMode(currentUser ? 'login' : 'signup'); // returning users → log in; new → sign up
-        if (currentUser) document.getElementById('auth-email').value = currentUser.email;
+        const lastEmail = localStorage.getItem('fw_last_email');
+        setAuthMode(lastEmail ? 'login' : 'signup'); // returning users → log in; new → sign up
+        if (lastEmail) document.getElementById('auth-email').value = lastEmail;
       }
     }
 
     /* ---------- Init ---------- */
-    window.onload = () => {
-      authInit();
-      seedIfEmpty();
-      const posted = processRecurring();
-      saveData();
+    window.onload = async () => {
       populateCurrencySelect();
       document.getElementById('budget-month').value = monthStr(budgetMonth);
       document.getElementById('report-month').value = monthStr(reportMonth);
       document.getElementById('app-version').textContent = 'v' + APP_VERSION;
+
+      // If logged in, pull the account's data from the cloud first (offline → local cache).
+      await authInit();
+
+      // Ensure a local baseline exists (fresh device / logged-out), then process recurring.
+      seedIfEmpty();
+      const posted = processRecurring();
+      saveData(); // persists locally; pushes to cloud only when logged in
       renderAll();
       if (posted) setTimeout(() => toast(`${posted} recurring transaction${posted > 1 ? 's' : ''} posted`), 400);
 

@@ -2,6 +2,11 @@
 
 All notable changes to FlowWallet. Newest first.
 
+## v1.2.0 — July 2026
+- **Cloud accounts & sync** — real authentication (Netlify Functions + Neon Postgres) with bcrypt-hashed passwords and JWT sessions. Your data now syncs across phone and web.
+- **Background sync** with offline support — changes save locally and push to the cloud automatically; pulls the latest when you reopen the app.
+- **Profile** name and password changes now update your real account.
+
 ## v1.1.0 — July 2026
 - **Custom categories** — add / edit / delete your own categories (name, emoji, colour, type) from Settings. Ships with new defaults: Loans & EMI, Rent, Investments.
 - **Auto-updating app** — service worker is now network-first, so updates apply automatically on reopen (no hard refresh needed) while still working offline.
