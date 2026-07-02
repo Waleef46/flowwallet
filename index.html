@@ -1765,7 +1765,19 @@
 
       // PWA: register the service worker (works when served over http/https)
       if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
-        navigator.serviceWorker.register('sw.js').catch(() => {});
+        // Auto-reload once when a new version takes control (only if already controlled,
+        // so first-time installs don't reload unnecessarily).
+        if (navigator.serviceWorker.controller) {
+          let reloaded = false;
+          navigator.serviceWorker.addEventListener('controllerchange', () => {
+            if (reloaded) return; reloaded = true; location.reload();
+          });
+        }
+        navigator.serviceWorker.register('sw.js').then((reg) => {
+          // Check for updates whenever the app regains focus.
+          reg.update();
+          document.addEventListener('visibilitychange', () => { if (!document.hidden) reg.update(); });
+        }).catch(() => {});
       }
     };
   </script>

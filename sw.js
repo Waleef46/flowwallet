@@ -1,30 +1,46 @@
-/* FlowWallet service worker — offline app shell via runtime caching */
-const CACHE = 'flowwallet-v1';
-const CORE = ['./', 'manifest.json', 'icon.svg'];
+/* FlowWallet service worker — auto-updating, offline-capable app shell */
+const CACHE = 'flowwallet-v2';
+const CORE = ['./', 'index.html', 'manifest.json', 'icon.svg'];
 
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(CORE)).catch(() => {}));
-  self.skipWaiting();
+  self.skipWaiting(); // activate the new SW immediately
 });
 
 self.addEventListener('activate', (e) => {
-  e.waitUntil(
-    caches.keys().then((keys) => Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k))))
-  );
-  self.clients.claim();
+  e.waitUntil((async () => {
+    const keys = await caches.keys();
+    await Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k)));
+    await self.clients.claim(); // take control of open pages right away
+  })());
 });
 
-// Cache-first for same-origin GETs; fall back to network and cache the result.
 self.addEventListener('fetch', (e) => {
   const req = e.request;
   if (req.method !== 'GET' || new URL(req.url).origin !== self.location.origin) return;
-  e.respondWith(
-    caches.match(req).then((hit) =>
-      hit || fetch(req).then((res) => {
+
+  const isPage = req.mode === 'navigate' || (req.headers.get('accept') || '').includes('text/html');
+
+  if (isPage) {
+    // Network-first: always try to get the freshest app, fall back to cache offline.
+    e.respondWith(
+      fetch(req).then((res) => {
         const copy = res.clone();
         caches.open(CACHE).then((c) => c.put(req, copy)).catch(() => {});
         return res;
-      }).catch(() => hit)
-    )
-  );
+      }).catch(() => caches.match(req).then((hit) => hit || caches.match('./')))
+    );
+  } else {
+    // Stale-while-revalidate for other same-origin assets.
+    e.respondWith(
+      caches.match(req).then((hit) => {
+        const network = fetch(req).then((res) => {
+          const copy = res.clone();
+          caches.open(CACHE).then((c) => c.put(req, copy)).catch(() => {});
+          return res;
+        }).catch(() => hit);
+        return hit || network;
+      })
+    );
+  }
 });
