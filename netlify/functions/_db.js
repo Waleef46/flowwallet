@@ -2,7 +2,15 @@
 const { neon } = require('@neondatabase/serverless');
 const jwt = require('jsonwebtoken');
 
-const sql = neon(process.env.DATABASE_URL);
+// Lazily connect so a missing DATABASE_URL doesn't crash the module on import.
+let _sql = null;
+const sql = (strings, ...values) => {
+  if (!_sql) {
+    if (!process.env.DATABASE_URL) throw new Error('DATABASE_URL is not set');
+    _sql = neon(process.env.DATABASE_URL);
+  }
+  return _sql(strings, ...values);
+};
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-insecure-secret';
 
 // Create the users table if it doesn't exist yet.
