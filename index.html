@@ -395,6 +395,15 @@
           </div>
 
           <div class="card rounded-2xl p-5 mb-4">
+            <div class="flex items-center justify-between mb-1">
+              <p class="font-medium">Categories</p>
+              <button onclick="showCategoryModal()" class="bg-blue-500 hover:bg-blue-400 px-3 py-1.5 rounded-lg text-sm font-semibold">+ Add</button>
+            </div>
+            <p class="text-xs text-gray-500 mb-3">Add your own (e.g. Loans, Rent, Investments). Used across transactions, budgets, analytics & reports.</p>
+            <div id="categories-list" class="grid grid-cols-1 sm:grid-cols-2 gap-2"></div>
+          </div>
+
+          <div class="card rounded-2xl p-5 mb-4">
             <p class="font-medium mb-1">Recurring Transactions</p>
             <p class="text-xs text-gray-500 mb-3">Auto-posted on their schedule. Set one up via the <span class="text-blue-400">Repeat</span> option in the New Transaction sheet.</p>
             <div id="recurring-list" class="space-y-2"></div>
@@ -545,18 +554,46 @@
     </div>
   </div>
 
+  <!-- CATEGORY MODAL -->
+  <div id="category-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-40 p-4">
+    <div class="bg-gray-900 border border-gray-800 w-full max-w-md rounded-3xl p-6 sheet-enter">
+      <h2 id="category-modal-title" class="text-2xl font-bold mb-6">New Category</h2>
+      <div class="flex gap-3 mb-4">
+        <input id="cat-icon" maxlength="2" value="🏷️" class="w-16 bg-gray-800 text-2xl p-3 rounded-2xl text-center outline-none"/>
+        <input id="cat-name" type="text" placeholder="Category name (e.g. Loans)" class="flex-1 bg-gray-800 p-4 rounded-2xl outline-none focus:ring-2 ring-blue-500"/>
+      </div>
+      <div class="grid grid-cols-2 gap-3 mb-4">
+        <select id="cat-kind" class="bg-gray-800 p-4 rounded-2xl outline-none">
+          <option value="expense">Expense</option>
+          <option value="income">Income</option>
+          <option value="both">Both</option>
+        </select>
+        <label class="flex items-center gap-3 bg-gray-800 px-4 rounded-2xl cursor-pointer">
+          <input id="cat-color" type="color" value="#3b82f6" class="w-9 h-9 bg-transparent border-0 cursor-pointer p-0"/>
+          <span class="text-sm text-gray-400">Colour</span>
+        </label>
+      </div>
+      <p id="cat-error" class="hidden text-sm text-red-400 mb-3"></p>
+      <button onclick="saveCategory()" class="w-full bg-blue-500 hover:bg-blue-400 py-4 rounded-2xl text-lg font-semibold">Save Category</button>
+      <button onclick="hideCategoryModal()" class="w-full mt-3 py-4 text-gray-400">Cancel</button>
+    </div>
+  </div>
+
   <!-- TOAST -->
   <div id="toast" class="hidden fixed bottom-8 left-1/2 -translate-x-1/2 bg-blue-500 text-white px-5 py-3 rounded-full shadow-lg z-50 text-sm font-medium"></div>
 
   <script>
     /* ---------- Config ---------- */
-    const CATEGORIES = {
+    const DEFAULT_CATEGORIES = {
       Food:          { label: 'Food & Groceries', icon: '🍔', color: '#f59e0b', kind: 'expense' },
       Transport:     { label: 'Transport',        icon: '🚌', color: '#14b8a6', kind: 'expense' },
       Shopping:      { label: 'Shopping',         icon: '🛍️', color: '#8b5cf6', kind: 'expense' },
       Bills:         { label: 'Bills & Utilities',icon: '💡', color: '#ec4899', kind: 'expense' },
+      Rent:          { label: 'Rent',             icon: '🏠', color: '#fb7185', kind: 'expense' },
+      Loans:         { label: 'Loans & EMI',      icon: '💸', color: '#f97316', kind: 'expense' },
       Entertainment: { label: 'Entertainment',    icon: '🎬', color: '#ef4444', kind: 'expense' },
       Health:        { label: 'Health',           icon: '🩺', color: '#06b6d4', kind: 'expense' },
+      Investments:   { label: 'Investments',      icon: '📈', color: '#10b981', kind: 'both'    },
       Salary:        { label: 'Salary',           icon: '💼', color: '#22c55e', kind: 'income'  },
       Other:         { label: 'Other',            icon: '📦', color: '#64748b', kind: 'both'    },
     };
@@ -581,6 +618,7 @@
     let goals        = JSON.parse(localStorage.getItem('fw_goals')) || null;
     let accounts     = JSON.parse(localStorage.getItem('fw_accounts')) || null;
     let recurring    = JSON.parse(localStorage.getItem('fw_recurring')) || null;
+    let categories   = JSON.parse(localStorage.getItem('fw_categories')) || null;
     let currency     = localStorage.getItem('fw_currency') || 'INR';
     let currentType  = 'expense';
     let editingId    = null;
@@ -636,6 +674,7 @@
           { id: 3, name: 'Vacation',       target: 150000, saved: 30000, icon: '✈️' },
         ];
       }
+      if (categories === null) categories = JSON.parse(JSON.stringify(DEFAULT_CATEGORIES));
       if (accounts === null) accounts = DEFAULT_ACCOUNTS.map(a => ({ ...a }));
       if (recurring === null) {
         const nextFirst = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 1).toISOString().slice(0, 10);
@@ -684,6 +723,7 @@
       localStorage.setItem('fw_goals', JSON.stringify(goals));
       localStorage.setItem('fw_accounts', JSON.stringify(accounts));
       localStorage.setItem('fw_recurring', JSON.stringify(recurring));
+      localStorage.setItem('fw_categories', JSON.stringify(categories));
       localStorage.setItem('fw_currency', currency);
     }
 
@@ -691,7 +731,7 @@
     const cur = () => CURRENCIES[currency] || CURRENCIES.INR;
     const fmt = (n) => cur().symbol + Math.round(n).toLocaleString(cur().locale);
     const fmtK = (v) => cur().symbol + (v / 1000).toLocaleString(cur().locale) + 'k';
-    const cat = (key) => CATEGORIES[key] || CATEGORIES.Other;
+    const cat = (key) => categories[key] || categories.Other || { label: key || 'Other', icon: '📦', color: '#64748b', kind: 'both' };
     const sameMonth = (dateStr, ref = new Date()) => {
       const d = new Date(dateStr);
       return d.getFullYear() === ref.getFullYear() && d.getMonth() === ref.getMonth();
@@ -789,7 +829,7 @@
 
     function renderFilters() {
       const wrap = document.getElementById('tx-filters');
-      const keys = ['all', 'income', ...Object.keys(CATEGORIES).filter(k => CATEGORIES[k].kind !== 'income')];
+      const keys = ['all', 'income', ...Object.keys(categories).filter(k => categories[k].kind !== 'income')];
       wrap.innerHTML = keys.map(k => {
         const active = activeFilter === k;
         const label = k === 'all' ? 'All' : k === 'income' ? 'Income' : cat(k).label;
@@ -937,7 +977,7 @@
     }
 
     function addBudgetCategory() {
-      const options = Object.keys(CATEGORIES).filter(k => CATEGORIES[k].kind !== 'income');
+      const options = Object.keys(categories).filter(k => categories[k].kind !== 'income');
       const choice = prompt(`Which category?\n${options.join(', ')}`);
       if (!choice) return;
       const key = options.find(k => k.toLowerCase() === choice.trim().toLowerCase() || cat(k).label.toLowerCase() === choice.trim().toLowerCase());
@@ -1169,6 +1209,7 @@
       renderBudgets();
       renderGoals();
       renderRecurring();
+      renderCategories();
       renderNotifications();
       renderChartsForPage(currentPage);
     }
@@ -1200,6 +1241,80 @@
       if (!confirm('Delete this recurring rule? Already-posted transactions stay.')) return;
       recurring = recurring.filter(x => x.id !== id);
       saveData(); renderRecurring(); toast('Recurring deleted');
+    }
+
+    /* ---------- Categories manager ---------- */
+    let editingCatKey = null;
+    function renderCategories() {
+      const wrap = document.getElementById('categories-list');
+      if (!wrap) return;
+      wrap.innerHTML = Object.keys(categories).map(key => {
+        const c = categories[key];
+        const kindLabel = c.kind === 'both' ? 'Both' : c.kind[0].toUpperCase() + c.kind.slice(1);
+        return `<div class="flex items-center justify-between bg-gray-800 rounded-xl px-3 py-2">
+          <span class="flex items-center gap-2 min-w-0">
+            <span class="w-7 h-7 rounded-full flex items-center justify-center text-sm shrink-0" style="background:${c.color}33">${c.icon}</span>
+            <span class="truncate text-sm">${c.label} <span class="text-xs text-gray-500">· ${kindLabel}</span></span>
+          </span>
+          <span class="flex items-center gap-2 shrink-0">
+            <button onclick="editCategory('${key}')" class="text-gray-500 hover:text-blue-400 text-sm">✎</button>
+            ${key === 'Other' ? '' : `<button onclick="deleteCategory('${key}')" class="text-gray-500 hover:text-red-400 text-sm">🗑</button>`}
+          </span>
+        </div>`;
+      }).join('');
+    }
+    function showCategoryModal() {
+      editingCatKey = null;
+      document.getElementById('category-modal-title').textContent = 'New Category';
+      document.getElementById('cat-icon').value = '🏷️';
+      document.getElementById('cat-name').value = '';
+      document.getElementById('cat-kind').value = 'expense';
+      document.getElementById('cat-color').value = '#3b82f6';
+      document.getElementById('cat-error').classList.add('hidden');
+      document.getElementById('category-modal').classList.remove('hidden');
+    }
+    function editCategory(key) {
+      const c = categories[key]; if (!c) return;
+      editingCatKey = key;
+      document.getElementById('category-modal-title').textContent = 'Edit Category';
+      document.getElementById('cat-icon').value = c.icon;
+      document.getElementById('cat-name').value = c.label;
+      document.getElementById('cat-kind').value = c.kind;
+      document.getElementById('cat-color').value = /^#[0-9a-fA-F]{6}$/.test(c.color) ? c.color : '#3b82f6';
+      document.getElementById('cat-error').classList.add('hidden');
+      document.getElementById('category-modal').classList.remove('hidden');
+    }
+    function hideCategoryModal() { document.getElementById('category-modal').classList.add('hidden'); }
+    function saveCategory() {
+      const err = document.getElementById('cat-error');
+      const show = (m) => { err.textContent = m; err.classList.remove('hidden'); };
+      const name = document.getElementById('cat-name').value.trim();
+      const icon = document.getElementById('cat-icon').value.trim() || '🏷️';
+      const kind = document.getElementById('cat-kind').value;
+      const color = document.getElementById('cat-color').value;
+      if (!name) return show('Enter a category name.');
+      if (editingCatKey) {
+        categories[editingCatKey] = { label: name, icon, color, kind };
+        toast('Category updated');
+      } else {
+        let base = name.replace(/[^a-zA-Z0-9]/g, '') || 'Cat', key = base, n = 2;
+        while (categories[key]) key = base + n++;
+        categories[key] = { label: name, icon, color, kind };
+        toast('Category added');
+      }
+      saveData(); renderAll(); hideCategoryModal();
+    }
+    function deleteCategory(key) {
+      if (key === 'Other') { toast('The "Other" category can’t be deleted'); return; }
+      const inUse = transactions.filter(t => t.category === key).length;
+      let msg = `Delete "${cat(key).label}"?`;
+      if (inUse) msg += `\n\n${inUse} transaction(s) use it — they’ll be moved to "Other".`;
+      if (!confirm(msg)) return;
+      if (inUse) transactions.forEach(t => { if (t.category === key) t.category = 'Other'; });
+      (recurring || []).forEach(r => { if (r.category === key) r.category = 'Other'; });
+      if (budgets[key] !== undefined) delete budgets[key];
+      delete categories[key];
+      saveData(); renderAll(); toast('Category deleted');
     }
 
     /* ---------- Reports ---------- */
@@ -1274,8 +1389,8 @@
     function populateCategorySelect() {
       const sel = document.getElementById('category');
       sel.innerHTML = '';
-      Object.keys(CATEGORIES).forEach(key => {
-        const c = CATEGORIES[key];
+      Object.keys(categories).forEach(key => {
+        const c = categories[key];
         if (currentType === 'income' && c.kind === 'expense') return;
         if (currentType === 'expense' && c.kind === 'income') return;
         const opt = document.createElement('option');
@@ -1407,7 +1522,7 @@
 
     /* ---------- Data management ---------- */
     function exportData() {
-      const blob = new Blob([JSON.stringify({ transactions, budgets, goals, accounts, recurring, currency }, null, 2)], { type: 'application/json' });
+      const blob = new Blob([JSON.stringify({ transactions, budgets, goals, accounts, recurring, categories, currency }, null, 2)], { type: 'application/json' });
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob); a.download = 'flowwallet-backup.json'; a.click();
       URL.revokeObjectURL(a.href);
@@ -1423,6 +1538,7 @@
           if (data.goals) goals = data.goals;
           if (data.accounts) accounts = data.accounts;
           if (data.recurring) recurring = data.recurring;
+          if (data.categories) categories = data.categories;
           if (data.currency) currency = data.currency;
           saveData(); populateCurrencySelect(); renderAll(); toast('Data imported');
         } catch { toast('Invalid file'); }
@@ -1431,12 +1547,12 @@
     }
     function resetData() {
       if (!confirm('Reset to sample data? This replaces your current data.')) return;
-      transactions = null; goals = null; accounts = null; recurring = null; budgets = { ...DEFAULT_BUDGETS };
+      transactions = null; goals = null; accounts = null; recurring = null; categories = null; budgets = { ...DEFAULT_BUDGETS };
       seedIfEmpty(); saveData(); renderAll(); toast('Reset to sample data');
     }
     function clearData() {
       if (!confirm('Clear ALL data? This cannot be undone.')) return;
-      transactions = []; goals = []; recurring = []; accounts = DEFAULT_ACCOUNTS.map(a => ({ ...a })); budgets = { ...DEFAULT_BUDGETS };
+      transactions = []; goals = []; recurring = []; accounts = DEFAULT_ACCOUNTS.map(a => ({ ...a })); categories = JSON.parse(JSON.stringify(DEFAULT_CATEGORIES)); budgets = { ...DEFAULT_BUDGETS };
       saveData(); renderAll(); toast('All data cleared');
     }
 
