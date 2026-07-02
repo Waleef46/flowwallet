@@ -408,6 +408,8 @@
             <p class="text-xs text-gray-500 mb-3">Auto-posted on their schedule. Set one up via the <span class="text-blue-400">Repeat</span> option in the New Transaction sheet.</p>
             <div id="recurring-list" class="space-y-2"></div>
           </div>
+
+          <p class="text-center text-xs text-gray-600 mt-2">FlowWallet <span id="app-version"></span></p>
         </section>
 
         <!-- ============ REPORTS ============ -->
@@ -584,6 +586,7 @@
 
   <script>
     /* ---------- Config ---------- */
+    const APP_VERSION = '1.1.0';
     const DEFAULT_CATEGORIES = {
       Food:          { label: 'Food & Groceries', icon: '🍔', color: '#f59e0b', kind: 'expense' },
       Transport:     { label: 'Transport',        icon: '🚌', color: '#14b8a6', kind: 'expense' },
@@ -1760,6 +1763,7 @@
       populateCurrencySelect();
       document.getElementById('budget-month').value = monthStr(budgetMonth);
       document.getElementById('report-month').value = monthStr(reportMonth);
+      document.getElementById('app-version').textContent = 'v' + APP_VERSION;
       renderAll();
       if (posted) setTimeout(() => toast(`${posted} recurring transaction${posted > 1 ? 's' : ''} posted`), 400);
 
