@@ -598,7 +598,7 @@
 
   <script>
     /* ---------- Config ---------- */
-    const APP_VERSION = '1.2.0';
+    const APP_VERSION = '1.2.1';
     const CHANGELOG = [
       { v: '1.2.0', date: 'Jul 2026', notes: [
         'Cloud accounts — real login that syncs your data across phone & web',
@@ -1758,7 +1758,9 @@
       } catch (e) {
         authError('Network error — check your connection and try again.');
       } finally {
-        btn.disabled = false; setAuthMode(authMode);
+        // Re-enable the button WITHOUT clearing any error message we just showed.
+        btn.disabled = false;
+        btn.textContent = authMode === 'signup' ? 'Create account' : 'Log in';
       }
     }
 
